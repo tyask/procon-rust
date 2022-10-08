@@ -89,6 +89,4 @@ yesno!(YES, NO);
 
 }
 
-#[cfg(test)]
-#[path = "./main_test.rs"]
-mod fumintests;
+// #[cfg(test)] #[path = "./main_test.rs"] mod fumintests;
