@@ -89,4 +89,6 @@ yesno!(YES, NO);
 
 }
 
-// #[cfg(test)] #[path = "./main_test.rs"] mod fumintests;
+#[cfg(all(test, feature="template"))]
+#[path="./main_test.rs"]
+mod tests;
