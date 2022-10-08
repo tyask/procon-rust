@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Cargo Run",
+			"command": "cargo",
+			"args": [
+				"run",
+				"--bin",
+				"${workspaceFolderBasename}-${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Rust Compete Test",
+			"command": "cargo",
+			"args": [
+				"compete",
+				"test",
+				"${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		}
+	]
+}

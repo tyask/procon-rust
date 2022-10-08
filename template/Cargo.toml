@@ -3,6 +3,10 @@ name = "template"
 version = "0.1.0"
 edition = "2018"
 
+[[bin]]
+name = "template-main"
+path = "src/main.rs"
+
 [dependencies]
 num = "=0.2.1"
 num-bigint = "=0.2.6"
