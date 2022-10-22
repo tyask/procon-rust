@@ -10,6 +10,11 @@ fn main() {
 pub mod fumin {
 use std::*;
 
+#[macro_export] macro_rules! def_caster {
+    ($($t:ty; $f:ident),*) => { $(#[macro_export] macro_rules! $f { ($n:expr) => { (($n) as $t) } })* };
+}
+def_caster!(usize;us, i32;i32, i64;i64);
+
 #[macro_export] macro_rules! vvec {
     // vvec![0; m, n] => vec![vec![0; m]; n]
     ($x:expr; $s:expr) => { vec![$x; $s] };
@@ -62,11 +67,12 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for collections::HashMap<K, V> {
 }
 
 #[macro_export] macro_rules! out {
-    ($($a:expr),*) => {
+    ($($a:expr),*) => {{
         let mut v = Vec::<String>::new();
-        $(v.push($a.fmtx());)*
+        $(v.push(($a).fmtx());)*
         println!("{}", v.fmtx());
-    };
+    }};
+    ($a:expr) => { println!("{}", ($a).fmtx()); };
 }
 
 macro_rules! scream {
