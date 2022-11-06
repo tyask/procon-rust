@@ -84,10 +84,9 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for collections::HashMap<K, V> {
 
 macro_rules! scream {
     ($yes:ident, $no:ident) => {
-        #[macro_export]
-        macro_rules! $yes {
+        #[macro_export] macro_rules! $yes {
             ($b:expr) => { out!(if $b { stringify!($yes) } else { stringify!($no) }); };
-            () => { out!(stringify!($yes)); };
+            ()        => { out!(stringify!($yes)); };
         }
     };
 }
