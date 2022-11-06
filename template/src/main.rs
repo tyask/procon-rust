@@ -10,25 +10,21 @@ fn main() {
 pub mod fumin {
 use std::*;
 
+pub type Us  = usize;
+pub type Is  = isize;
+pub type Us1 = proconio::marker::Usize1;
+pub type Is1 = proconio::marker::Isize1;
+
 #[macro_export] macro_rules! def_caster {
     ($($t:ty; $f:ident),*) => { $(#[macro_export] macro_rules! $f { ($n:expr) => { (($n) as $t) } })* };
 }
-def_caster!(usize;us, i32;i32, i64;i64);
+def_caster!(usize;us, isize;is, i32;i32, i64;i64);
 
-#[macro_export] macro_rules! vvec {
-    // vvec![0; m, n] => vec![vec![0; m]; n]
-    ($x:expr; $s:expr) => { vec![$x; $s] };
-    ($x:expr; $s0:expr; $($s:expr);+) => { vvec![vec![$x; $s0]; $($s);+ ] };
-}
-
-pub fn chif<T: PartialOrd>(value: T, target: &mut T, cond: std::cmp::Ordering) -> bool {
-    if value.partial_cmp(target) == Some(cond) { *target = value; true } else { false }
-}
-#[macro_export] macro_rules! chmax {
-    ($target:expr, $value:expr) => { chif($value, &mut $target, cmp::Ordering::Greater) };
-}
-#[macro_export] macro_rules! chmin {
-    ($target:expr, $value:expr) => { chif($value, &mut $target, cmp::Ordering::Less) };
+pub fn recurfn<P, R>(p: P, f: &dyn Fn(P, &dyn Fn(P) -> R) -> R) -> R { f(p, &|p: P| recurfn(p, &f)) }
+pub fn chmax<T: PartialOrd+Copy>(target: &mut T, value: &T) -> bool { chif(target, value, cmp::Ordering::Greater) }
+pub fn chmin<T: PartialOrd+Copy>(target: &mut T, value: &T) -> bool { chif(target, value, cmp::Ordering::Less) }
+fn chif<T: PartialOrd+Copy>(target: &mut T, value: &T, cond: std::cmp::Ordering) -> bool {
+    if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
 }
 
 pub struct CumSum<N> { pub s: Vec<N> }
@@ -45,7 +41,7 @@ impl<N: Default+ops::Add<Output=N>+ops::Sub<Output=N>+Copy> CumSum<N> {
 trait Joiner { fn join(self, sep: &str) -> String; }
 impl<It: Iterator<Item=String>> Joiner for It { fn join(self, sep: &str) -> String { self.collect::<Vec<_>>().join(sep) } }
 
-pub trait Fmtx<T=Self> { fn fmtx(&self) -> String; }
+pub trait Fmtx { fn fmtx(&self) -> String; }
 macro_rules! fmtx_primitive { ($($t:ty),*) => { $(impl Fmtx for $t { fn fmtx(&self) -> String { self.to_string() }})* } }
 
 fmtx_primitive! {
@@ -53,7 +49,7 @@ fmtx_primitive! {
     usize, isize, f32, f64, char, &str, String, bool
 }
 
-pub struct ByLine<'a, T> { v: &'a Vec<T> }
+pub struct ByLine<'a, T> { pub v: &'a Vec<T> }
 impl<'a, T: Fmtx> ByLine<'a, T> { pub fn from(v: &'a Vec<T>) -> ByLine<'a, T> { ByLine{v} }}
 
 impl<'a, T: Fmtx> Fmtx for ByLine<'a, T> {
@@ -66,13 +62,24 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for collections::HashMap<K, V> {
     fn fmtx(&self) -> String { self.iter().map(|(k,v)| format!("{}:{}", k, v.fmtx())).join(" ") }
 }
 
+#[macro_export] macro_rules! fmtx {
+    ($a:expr, $($b:expr),*)       => {{ format!("{} {}", fmtx!(($a)), fmtx!($($b),*)) }};
+    ($a:expr)                     => {{ ($a).fmtx() }};
+
+    ($a:expr, $($b:expr),*;debug) => {{ format!("{} {}", fmtx!(($a);debug), fmtx!($($b),*;debug)) }};
+    ($a:expr;debug)               => {{ format!("{:?}", ($a)) }};
+
+    ($a:expr, $($b:expr),*;line)  => {{ format!("{}\n{}", fmtx!(($a);line), fmtx!($($b),*;line)) }};
+    ($a:expr;line)                => {{ ($a).fmtx() }};
+
+    ($a:expr;byline)              => {{ format!("{}", ByLine{v:&($a)}.fmtx()) }};
+}
+
 #[macro_export] macro_rules! out {
-    ($($a:expr),*) => {{
-        let mut v = Vec::<String>::new();
-        $(v.push(($a).fmtx());)*
-        println!("{}", v.fmtx());
-    }};
-    ($a:expr) => { println!("{}", ($a).fmtx()); };
+    ($($a:expr),*)        => { println!("{}", fmtx!($($a),*)); };
+    ($($a:expr),*;debug)  => { println!("{}", fmtx!($($a),*;debug)); };
+    ($($a:expr),*;line)   => { println!("{}", fmtx!($($a),*;line)); };
+    ($a:expr;byline)      => { println!("{}", fmtx!($a;byline)); };
 }
 
 macro_rules! scream {
