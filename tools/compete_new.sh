@@ -4,7 +4,8 @@ CONTEST=$1
 OUT=$(cargo compete new $CONTEST 2>&1)
 echo "$OUT"
 
+TEMPLATE=$(dirname $0)/../contest/template
 PACKAGE=$(echo $OUT | head -n1 | awk '{print $5}' | sed 's|\\|/|g')
-find $PACKAGE -name '*.rs' | while read SRC; do cat $(dirname $0)/../template/src/main.rs > $SRC; done
-cp -r $(dirname $0)/../template/.vscode $PACKAGE
+find $PACKAGE -name '*.rs' | while read SRC; do cat $TEMPLATE/src/bin/main.rs > $SRC; done
+cp -r $TEMPLATE/.vscode $PACKAGE
 code $PACKAGE

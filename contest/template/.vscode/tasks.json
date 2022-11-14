@@ -2,7 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Rust Compete Test",
+			"label": "Cargo Compete Test",
 			"command": "cargo",
 			"args": [
 				"compete",
@@ -15,7 +15,20 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Rust UnitTest",
+			"label": "Cargo equip",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/../../tools/cargo_equip.py",
+				"${file}",
+				"${workspaceFolderBasename}-${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Cargo Test",
 			"command": "cargo",
 			"args": [
 				"test",

@@ -1,2 +1,4 @@
-/target
-/contest
+target
+contest
+!contest/template
+external
