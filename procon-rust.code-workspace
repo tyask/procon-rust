@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "procon-rust",
+			"path": "."
+		},
+		{
+			"name": "template",
+			"path": "contest/template"
+		},
+		{
+			"name": "contest",
+			"path": "contest"
+		},
+		{
+			"name": "abc277",
+			"path": "contest/abc277"
+		}
+	],
+	"settings": {}
+}
