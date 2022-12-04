@@ -1,8 +1,9 @@
 #!/bin/env python
 
-import sys, os
+import os
 import pathlib
 import subprocess
+import sys
 
 file = sys.argv[1]
 bin = sys.argv[2]
@@ -12,7 +13,7 @@ os.makedirs('src/tests', exist_ok=True)
 pathlib.Path('src/tests/main_test.rs').touch()
 
 # execute cargo equip
-cmd = "cargo equip --remove docs --minify libs --exclude-atcoder-crates --no-rustfmt --bin {}".format(bin)
+cmd = "cargo equip --remove docs --exclude-atcoder-crates --no-rustfmt --bin {}".format(bin)
 p = subprocess.run(cmd, shell=True, capture_output=True)
 if p.returncode != 0:
     print("Failed to execute cargo equip")

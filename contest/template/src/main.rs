@@ -11,13 +11,17 @@ fn main() {
 pub mod fumin {
 use std::{*, ops::*, collections::*};
 
-pub type Us  = usize;
-pub type Is  = isize;
-pub type Us1 = proconio::marker::Usize1;
-pub type Is1 = proconio::marker::Isize1;
-pub type Chars = proconio::marker::Chars;
-pub type Bytes = proconio::marker::Bytes;
-pub type Str = String;
+pub type Us        = usize;
+pub type Is        = isize;
+pub type Us1       = proconio::marker::Usize1;
+pub type Is1       = proconio::marker::Isize1;
+pub type Chars     = proconio::marker::Chars;
+pub type Bytes     = proconio::marker::Bytes;
+pub type Str       = String;
+pub type Map<K,V>  = HashMap<K,V>;
+pub type BMap<K,V> = BTreeMap<K,V>;
+pub type Set<V>    = HashSet<V>;
+pub type BSet<V>   = BTreeSet<V>;
 
 // PrimNum
 pub trait PartialPrimNum:
@@ -255,5 +259,5 @@ yesno!(YES, NO);
 }
 
 #[cfg(all(test, feature="template"))]
-#[path="../tests/main_test.rs"]
+#[path="./main_test.rs"]
 mod tests;

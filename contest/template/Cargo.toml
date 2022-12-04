@@ -5,11 +5,11 @@ edition = "2018"
 
 [[bin]]
 name = "template-main"
-path = "src/bin/main.rs"
+path = "src/main.rs"
 
 [[bin]]
 name = "exmain"
-path = "src/bin/exmain.rs"
+path = "src/exmain.rs"
 
 [dependencies]
 num = "=0.2.1"

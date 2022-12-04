@@ -9,32 +9,7 @@
 			"path": "contest/template"
 		},
 		{
-			"name": "contest",
-			"path": "contest"
-		},
-		{
-			"name": "abc266",
-			"path": "contest/abc266"
-		},
-		{
-			"name": "abc265",
-			"path": "contest/abc265"
-		},
-		{
-			"name": "abc264",
-			"path": "contest/abc264"
-		},
-		{
-			"name": "abc263",
-			"path": "contest/abc263"
-		},
-		{
-			"name": "abc279",
-			"path": "contest/abc279"
-		},
-		{
-			"name": "abc280",
-			"path": "contest/abc280"
+			"path": "contest/abc262"
 		}
 	],
 	"settings": {}
