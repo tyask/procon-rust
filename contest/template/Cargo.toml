@@ -7,6 +7,10 @@ edition = "2018"
 name = "template-main"
 path = "src/bin/main.rs"
 
+[[bin]]
+name = "exmain"
+path = "src/bin/exmain.rs"
+
 [dependencies]
 num = "=0.2.1"
 num-bigint = "=0.2.6"

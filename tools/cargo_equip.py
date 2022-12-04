@@ -21,5 +21,5 @@ if p.returncode != 0:
 
 # overwrite file
 with open(file, mode='w') as f:
-    f.write(p.stdout.decode().replace('\r', ''))
+    f.write(p.stdout.decode('cp932', errors = 'ignore').replace('\r', ''))
 

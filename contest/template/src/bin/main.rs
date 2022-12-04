@@ -1,4 +1,5 @@
-use std::*;
+#[allow(unused_imports)]
+use std::{*, collections::*, ops::*};
 use proconio::{input, fastout};
 use fumin::*;
 
@@ -8,7 +9,7 @@ fn main() {
 
 #[allow(dead_code, unused_macros)]
 pub mod fumin {
-use std::{*, ops::*};
+use std::{*, ops::*, collections::*};
 
 pub type Us  = usize;
 pub type Is  = isize;
@@ -16,12 +17,26 @@ pub type Us1 = proconio::marker::Usize1;
 pub type Is1 = proconio::marker::Isize1;
 pub type Chars = proconio::marker::Chars;
 pub type Bytes = proconio::marker::Bytes;
+pub type Str = String;
 
-pub trait PartialPrimNum: Copy+PartialOrd<Self>+Add<Output=Self>+Sub<Output=Self>+Mul<Output=Self>+Div<Output=Self>+Rem<Output=Self> {
+// PrimNum
+pub trait PartialPrimNum:
+        Copy
+        +PartialOrd<Self>
+        +Add<Output=Self>
+        +Sub<Output=Self>
+        +Mul<Output=Self>
+        +Div<Output=Self>
+        +Rem<Output=Self>
+        +MulAssign
+        +DivAssign
+        +RemAssign
+        {
     const ZERO: Self;
     const ONE:  Self;
     fn us(self) -> usize;
     fn is(self) -> isize;
+    fn f64(self) -> f64;
     fn from_is(n: isize) -> Self;
 }
 pub trait PartialIPrimNum: PartialPrimNum+Neg<Output=Self> {
@@ -40,6 +55,7 @@ pub trait IPrimInt : PrimInt+PartialIPrimNum {}
             const ONE:  Self = 1 as Self;
             fn us(self) -> usize { self as usize }
             fn is(self) -> isize { self as isize }
+            fn f64(self) -> f64  { self as f64 }
             fn from_is(n: isize) -> Self { n as Self }
         }
     )*}
@@ -71,11 +87,45 @@ impl_partial_iprim_num!(isize, i32, i64, f32, f64);
 impl_prim_int! (isize, i32, i64, usize, u32, u64);
 impl_iprim_int!(isize, i32, i64);
 
+// Utilities
+#[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
+pub fn recurfn<P, R>(p: P, f: &dyn Fn(P, &dyn Fn(P) -> R) -> R) -> R { f(p, &|p: P| recurfn(p, &f)) }
+pub fn chmax<N: PrimInt>(value: N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Greater) }
+pub fn chmin<N: PrimInt>(value: N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Less) }
+pub fn abs_diff<N: PrimInt>(n1: N, n2: N) -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
+fn chif<N: PrimInt>(value: N, target: &mut N, cond: std::cmp::Ordering) -> bool {
+    if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
+}
+pub fn gcd<N:PrimInt>(mut a: N, mut b: N) -> N { while b > N::ZERO { let c = b; b = a % b; a = c; } a }
+pub fn lcm<N:PrimInt>(a: N,b: N)          -> N { if a==N::ZERO || b==N::ZERO { N::ZERO } else { a / gcd(a,b) * b }}
+pub fn floor<N:PrimInt>(a: N, b: N)       -> N { a / b }
+pub fn ceil<N:PrimInt>(a: N, b: N)        -> N { (a + b - N::ONE) / b }
+pub fn modulo<N:PrimInt>(n: N, m: N)      -> N { let r = n % m; or!(r < N::ZERO; r + m, r) }
+pub fn powmod<N:PrimInt+BitAnd<Output=N>+Shr<Output=N>+ShrAssign>(mut n: N, mut k: N, m: N) -> N {
+    let one = N::ONE;
+    let mut a = one;
+    while k > N::ZERO {
+        if k & one == one { a *= n; a %= m; }
+        n %= m; n *= n; n %= m;
+        k >>= one;
+    }
+    a
+}
+pub fn sumae<N:PrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_is(2) }
+pub fn sumad<N:PrimInt>(n: N, a: N, d: N) -> N { n * (N::from_is(2) * a + (n - N::ONE) * d) / N::from_is(2) }
+pub fn ndigits<N:PrimInt>(mut n: N) -> usize { let mut d = 0; while n > N::ZERO { d+=1; n/=N::from_is(10); } d }
+
+
+// Pt
 #[derive(Debug,PartialEq,Copy,Clone)]
 pub struct Pt<N: PartialIPrimNum> { pub x: N, pub y: N }
 impl<N: PartialIPrimNum> ops::Add<Pt<N>> for Pt<N> {
     type Output = Pt<N>;
     fn add(self, rhs: Pt<N>) -> Self::Output { Pt{x: self.x + rhs.x, y: self.y + rhs.y} }
+}
+impl<N: PartialIPrimNum> ops::Sub<Pt<N>> for Pt<N> {
+    type Output = Pt<N>;
+    fn sub(self, rhs: Pt<N>) -> Self::Output { Pt{x: self.x - rhs.x, y: self.y - rhs.y} }
 }
 impl<N: PartialIPrimNum> Pt<N> {
     pub fn dir4() -> [Pt<N>; 4] {
@@ -88,16 +138,23 @@ impl<N: PartialIPrimNum> Pt<N> {
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn from_is(x: isize, y: isize) -> Pt<N> { Self::of(N::from_is(x), N::from_is(y)) }
     pub fn tuple(self) -> (N, N) { (self.x, self.y) }
+    pub fn norm(self) -> f64 { (self.x * self.x + self.y * self.y).f64().sqrt() }
+}
+impl Pt<f64> {
+    pub fn rot(self, th: f64) -> Pt<f64> {
+        let (x, y) = (self.x, self.y);
+        Self::of(th.cos()*x-th.sin()*y, th.sin()*x+th.cos()+y) // 反時計回りにth度回転
+    }
+}
+impl<N: PartialIPrimNum + proconio::source::Readable<Output=N>> proconio::source::Readable for Pt<N> {
+    type Output = Pt<N>;
+    fn read<R: io::BufRead, S: proconio::source::Source<R>>(source: &mut S) -> Self::Output {
+        Pt::of(N::read(source), N::read(source))
+    }
 }
 
-pub fn recurfn<P, R>(p: P, f: &dyn Fn(P, &dyn Fn(P) -> R) -> R) -> R { f(p, &|p: P| recurfn(p, &f)) }
-pub fn chmax<N: PrimInt>(target: &mut N, value: &N) -> bool { chif(target, value, cmp::Ordering::Greater) }
-pub fn chmin<N: PrimInt>(target: &mut N, value: &N) -> bool { chif(target, value, cmp::Ordering::Less) }
-pub fn abs_diff<N: PrimInt>(n1: N, n2: N) -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-fn chif<N: PrimInt>(target: &mut N, value: &N, cond: std::cmp::Ordering) -> bool {
-    if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
-}
 
+// CumSum
 pub struct CumSum<N> { pub s: Vec<N> }
 impl<N: Default+PrimInt> CumSum<N> {
     pub fn new(v: &Vec<N>) -> Self {
@@ -109,12 +166,14 @@ impl<N: Default+PrimInt> CumSum<N> {
     pub fn sum(&self, l: usize, r: usize) -> N { self.s[r] - self.s[l] }
 }
 
+// Grid
 pub struct Grid<T> { pub raw: Vec<Vec<T>> }
 impl<T: Clone> Grid<T> {
     pub fn from(v: &Vec<Vec<T>>) -> Grid<T> { Grid{raw: v.to_vec()} }
     pub fn new(h: Us, w: Us, v: T) -> Grid<T> { Grid{raw: vec![vec![v; w]; h]} }
-    pub fn inp<N:PartialIPrimNum>(&self, p: Pt<N>) -> bool { self.inij(p.x, p.y) }
+    pub fn inp<N:PartialIPrimNum>(&self, p: Pt<N>)    -> bool { self.inij(p.x, p.y) }
     pub fn inij<N:PartialIPrimNum>(&self, i: N, j: N) -> bool { 0<=i.is() && i.is()<self.raw.len().is() && 0<=j.is() && j.is()<self.raw[i.us()].len().is() }
+    pub fn int<N:PartialIPrimNum>(&self, t: (N, N))   -> bool { self.inij(t.0, t.1) }
 }
 impl<T, N: PartialIPrimNum> Index<Pt<N>> for Grid<T> {
     type Output = T;
@@ -131,6 +190,7 @@ impl<T, N: PartialIPrimNum> IndexMut<(N,N)> for Grid<T> {
     fn index_mut(&mut self, p: (N,N)) -> &mut Self::Output { &mut self.raw[p.0.us()][p.1.us()] }
 }
 
+// out
 trait Joiner { fn join(self, sep: &str) -> String; }
 impl<It: Iterator<Item=String>> Joiner for It { fn join(self, sep: &str) -> String { self.collect::<Vec<_>>().join(sep) } }
 
@@ -151,7 +211,7 @@ impl<'a, T: Fmtx> Fmtx for ByLine<'a, T> {
 impl<T: Fmtx> Fmtx for Vec<T> {
     fn fmtx(&self) -> String { self.iter().map(|e| e.fmtx()).join(" ") }
 }
-impl<K: fmt::Display, V: Fmtx> Fmtx for collections::HashMap<K, V> {
+impl<K: fmt::Display, V: Fmtx> Fmtx for HashMap<K, V> {
     fn fmtx(&self) -> String { self.iter().map(|(k,v)| format!("{}:{}", k, v.fmtx())).join(" ") }
 }
 
@@ -169,10 +229,10 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for collections::HashMap<K, V> {
 }
 
 #[macro_export] macro_rules! out {
-    ($($a:expr),*)        => { println!("{}", fmtx!($($a),*)); };
-    ($($a:expr),*;debug)  => { println!("{}", fmtx!($($a),*;debug)); };
-    ($($a:expr),*;line)   => { println!("{}", fmtx!($($a),*;line)); };
-    ($a:expr;byline)      => { println!("{}", fmtx!($a;byline)); };
+    ($($a:expr),*)        => { println!("{}", fmtx!($($a),*)) };
+    ($($a:expr),*;debug)  => { println!("{}", fmtx!($($a),*;debug)) };
+    ($($a:expr),*;line)   => { println!("{}", fmtx!($($a),*;line)) };
+    ($a:expr;byline)      => { println!("{}", fmtx!($a;byline)) };
 }
 
 macro_rules! scream {

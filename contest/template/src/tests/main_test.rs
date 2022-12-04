@@ -36,7 +36,7 @@ mod tests {
         {
             let mut m = 0;
             let mut do_chmax = |v, exp_updated, exp_val| {
-                assert_eq!(chmax(&mut m, &v), exp_updated);
+                assert_eq!(chmax(v, &mut m), exp_updated);
                 assert_eq!(m, exp_val);
             };
             do_chmax(1, true,  1);
@@ -47,7 +47,7 @@ mod tests {
         {
             let mut m = 1;
             let mut do_chmin = |v, exp_updated, exp_val| {
-                assert_eq!(chmin(&mut m, &v), exp_updated);
+                assert_eq!(chmin(v, &mut m), exp_updated);
                 assert_eq!(m, exp_val);
             };
 
