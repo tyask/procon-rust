@@ -168,13 +168,17 @@ impl<N: PartialIPrimNum> Pt<N> {
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn from_is(x: isize, y: isize) -> Pt<N> { Self::of(N::from_is(x), N::from_is(y)) }
     pub fn tuple(self) -> (N, N) { (self.x, self.y) }
-    pub fn norm(self) -> f64 { (self.x * self.x + self.y * self.y).f64().sqrt() }
+    pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
+    pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
 }
 impl Pt<f64> {
     pub fn rot(self, th: f64) -> Pt<f64> {
         let (x, y) = (self.x, self.y);
-        Self::of(th.cos()*x-th.sin()*y, th.sin()*x+th.cos()+y) // 反時計回りにth度回転
+        Self::of(th.cos()*x-th.sin()*y, th.sin()*x+th.cos()*y) // 反時計回りにth度回転
     }
+}
+impl<N: PartialIPrimNum+fmt::Display> Fmtx for Pt<N> {
+    fn fmtx(&self) -> String { format!("{} {}", self.x, self.y) }
 }
 impl<N: PartialIPrimNum + proconio::source::Readable<Output=N>> proconio::source::Readable for Pt<N> {
     type Output = Pt<N>;

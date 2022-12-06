@@ -16,6 +16,9 @@
 		},
 		{
 			"path": "contest/abc260"
+		},
+		{
+			"path": "contest/abc259"
 		}
 	],
 	"settings": {}
