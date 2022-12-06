@@ -9,11 +9,16 @@ file = sys.argv[1]
 bin = sys.argv[2]
 
 # create dummy test file to resolve test module while executing cargo equip
-os.makedirs('src/tests', exist_ok=True)
-pathlib.Path('src/tests/main_test.rs').touch()
+pathlib.Path('src/bin/main_test.rs').touch()
 
 # execute cargo equip
-cmd = "cargo equip --remove docs --exclude-atcoder-crates --no-rustfmt --bin {}".format(bin)
+cmd = "cargo equip \
+        --remove docs\
+        --remove comments \
+        --exclude-atcoder-crates \
+        --no-rustfmt \
+        --bin {}".format(bin)
+
 p = subprocess.run(cmd, shell=True, capture_output=True)
 if p.returncode != 0:
     print("Failed to execute cargo equip")

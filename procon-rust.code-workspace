@@ -10,6 +10,12 @@
 		},
 		{
 			"path": "contest/abc262"
+		},
+		{
+			"path": "contest/abc261"
+		},
+		{
+			"path": "contest/abc260"
 		}
 	],
 	"settings": {}

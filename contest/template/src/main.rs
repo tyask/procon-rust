@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use std::{*, collections::*, ops::*};
+use std::{*, collections::*, ops::*, cmp::*};
 use proconio::{input, fastout};
 use fumin::*;
 
@@ -118,6 +118,32 @@ pub fn powmod<N:PrimInt+BitAnd<Output=N>+Shr<Output=N>+ShrAssign>(mut n: N, mut 
 pub fn sumae<N:PrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_is(2) }
 pub fn sumad<N:PrimInt>(n: N, a: N, d: N) -> N { n * (N::from_is(2) * a + (n - N::ONE) * d) / N::from_is(2) }
 pub fn ndigits<N:PrimInt>(mut n: N) -> usize { let mut d = 0; while n > N::ZERO { d+=1; n/=N::from_is(10); } d }
+
+pub trait MapTrait<K,V> {
+    fn def(&self, k: &K)        -> V;
+    fn or(&self, k: &K, v: V)   -> V;
+    fn def_mut(&mut self, k: K) -> &mut V;
+}
+
+impl<K:Eq+hash::Hash, V:Default+Clone> MapTrait<K, V> for Map<K, V> {
+    fn def(&self, k: &K)        -> V { self.get(&k).cloned().unwrap_or_default() }
+    fn or(&self, k: &K, v: V)   -> V { self.get(&k).cloned().unwrap_or(v) }
+    fn def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+}
+
+pub trait BSetTrait<T> {
+    fn lower_bound(&self, t: &T) -> Option<&T>;
+    fn upper_bound(&self, t: &T) -> Option<&T>;
+}
+
+impl<T:Ord> BSetTrait<T> for BSet<T> {
+    fn lower_bound(&self, t: &T) -> Option<&T> {
+        self.range(t..).next()
+    }
+    fn upper_bound(&self, t: &T) -> Option<&T> {
+        self.range((Bound::Excluded(t), Bound::Unbounded)).next()
+    }
+}
 
 
 // Pt
