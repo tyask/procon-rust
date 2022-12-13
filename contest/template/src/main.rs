@@ -7,7 +7,7 @@ use fumin::*;
 fn main() {
 }
 
-#[allow(dead_code, unused_macros)]
+#[allow(dead_code, unused_macros, non_snake_case)]
 pub mod fumin {
 use std::{*, ops::*, collections::*};
 
@@ -94,12 +94,13 @@ impl_iprim_int!(isize, i32, i64);
 // Utilities
 #[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
 pub fn recurfn<P, R>(p: P, f: &dyn Fn(P, &dyn Fn(P) -> R) -> R) -> R { f(p, &|p: P| recurfn(p, &f)) }
-pub fn chmax<N: PrimInt>(value: N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Greater) }
-pub fn chmin<N: PrimInt>(value: N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Less) }
-pub fn abs_diff<N: PrimInt>(n1: N, n2: N) -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-fn chif<N: PrimInt>(value: N, target: &mut N, cond: std::cmp::Ordering) -> bool {
+pub fn chmax<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Greater) }
+pub fn chmin<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Less) }
+fn chif<N:Clone+PartialOrd>(value: &N, target: &mut N, cond: std::cmp::Ordering) -> bool {
     if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
 }
+
+pub fn abs_diff<N: PrimInt>(n1: N, n2: N) -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
 pub fn gcd<N:PrimInt>(mut a: N, mut b: N) -> N { while b > N::ZERO { let c = b; b = a % b; a = c; } a }
 pub fn lcm<N:PrimInt>(a: N,b: N)          -> N { if a==N::ZERO || b==N::ZERO { N::ZERO } else { a / gcd(a,b) * b }}
 pub fn floor<N:PrimInt>(a: N, b: N)       -> N { a / b }
@@ -120,29 +121,29 @@ pub fn sumad<N:PrimInt>(n: N, a: N, d: N) -> N { n * (N::from_is(2) * a + (n - N
 pub fn ndigits<N:PrimInt>(mut n: N) -> usize { let mut d = 0; while n > N::ZERO { d+=1; n/=N::from_is(10); } d }
 
 pub trait MapTrait<K,V> {
-    fn def(&self, k: &K)        -> V;
-    fn or(&self, k: &K, v: V)   -> V;
-    fn def_mut(&mut self, k: K) -> &mut V;
+    fn or_def(&self, k: &K)        -> V;
+    fn or(&self, k: &K, v: V)      -> V;
+    fn or_def_mut(&mut self, k: K) -> &mut V;
 }
 
 impl<K:Eq+hash::Hash, V:Default+Clone> MapTrait<K, V> for Map<K, V> {
-    fn def(&self, k: &K)        -> V { self.get(&k).cloned().unwrap_or_default() }
-    fn or(&self, k: &K, v: V)   -> V { self.get(&k).cloned().unwrap_or(v) }
-    fn def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+    fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
+    fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
+    fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+}
+impl<K:Eq+Ord, V:Default+Clone> MapTrait<K, V> for BMap<K, V> {
+    fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
+    fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
+    fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
 }
 
 pub trait BSetTrait<T> {
     fn lower_bound(&self, t: &T) -> Option<&T>;
     fn upper_bound(&self, t: &T) -> Option<&T>;
 }
-
 impl<T:Ord> BSetTrait<T> for BSet<T> {
-    fn lower_bound(&self, t: &T) -> Option<&T> {
-        self.range(t..).next()
-    }
-    fn upper_bound(&self, t: &T) -> Option<&T> {
-        self.range((Bound::Excluded(t), Bound::Unbounded)).next()
-    }
+    fn lower_bound(&self, t: &T) -> Option<&T> { self.range(t..).next() }
+    fn upper_bound(&self, t: &T) -> Option<&T> { self.range((Bound::Excluded(t), Bound::Unbounded)).next() }
 }
 
 
@@ -153,17 +154,25 @@ impl<N: PartialIPrimNum> ops::Add<Pt<N>> for Pt<N> {
     type Output = Pt<N>;
     fn add(self, rhs: Pt<N>) -> Self::Output { Pt{x: self.x + rhs.x, y: self.y + rhs.y} }
 }
+impl<N: PartialIPrimNum> ops::AddAssign<Pt<N>> for Pt<N> {
+    fn add_assign(&mut self, rhs: Pt<N>) { *self = *self + rhs; }
+}
 impl<N: PartialIPrimNum> ops::Sub<Pt<N>> for Pt<N> {
     type Output = Pt<N>;
     fn sub(self, rhs: Pt<N>) -> Self::Output { Pt{x: self.x - rhs.x, y: self.y - rhs.y} }
 }
+impl<N: PartialIPrimNum> ops::SubAssign<Pt<N>> for Pt<N> {
+    fn sub_assign(&mut self, rhs: Pt<N>) { *self = *self - rhs; }
+}
 impl<N: PartialIPrimNum> Pt<N> {
-    pub fn dir4() -> [Pt<N>; 4] {
-        [Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0), Pt::from_is(-1,0)]
+    pub fn dir4() -> Vec<Pt<N>> {
+        vec![Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0), Pt::from_is(-1,0)]
     }
-    pub fn dir8() -> [Pt<N>; 8] {
-        [Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0), Pt::from_is(-1,0),
-         Pt::from_is(1,1), Pt::from_is(1,-1), Pt::from_is(-1,1), Pt::from_is(-1,1) ]
+    pub fn dir8() -> Vec<Pt<N>> {
+        vec![
+            Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0),  Pt::from_is(-1,0),
+            Pt::from_is(1,1), Pt::from_is(1,-1), Pt::from_is(-1,1), Pt::from_is(-1,-1)
+            ]
     }
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn from_is(x: isize, y: isize) -> Pt<N> { Self::of(N::from_is(x), N::from_is(y)) }
@@ -190,7 +199,7 @@ impl<N: PartialIPrimNum + proconio::source::Readable<Output=N>> proconio::source
 
 // CumSum
 pub struct CumSum<N> { pub s: Vec<N> }
-impl<N: Default+PrimInt> CumSum<N> {
+impl<N: Default+Add<Output=N>+Sub<Output=N>+Copy+Clone> CumSum<N> {
     pub fn new(v: &Vec<N>) -> Self {
         let mut cs = CumSum{ s: Vec::new() };
         cs.s.resize(v.len() + 1, Default::default());
@@ -262,29 +271,16 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for HashMap<K, V> {
     ($a:expr;byline)              => {{ format!("{}", ByLine{v:&($a)}.fmtx()) }};
 }
 
-#[macro_export] macro_rules! out {
-    ($($a:expr),*)        => { println!("{}", fmtx!($($a),*)) };
-    ($($a:expr),*;debug)  => { println!("{}", fmtx!($($a),*;debug)) };
-    ($($a:expr),*;line)   => { println!("{}", fmtx!($($a),*;line)) };
-    ($a:expr;byline)      => { println!("{}", fmtx!($a;byline)) };
+#[macro_export]#[cfg(feature="local")] macro_rules! debug {
+    ($($a:expr),*) => { eprintln!("{}", fmtx!($($a),*; debug)); }
+}
+#[macro_export]#[cfg(not(feature="local"))] macro_rules! debug {
+    ($($a:expr),*) => { }
 }
 
-macro_rules! scream {
-    ($yes:ident, $no:ident) => {
-        #[macro_export] macro_rules! $yes {
-            ($b:expr) => { out!(if $b { stringify!($yes) } else { stringify!($no) }); };
-            ()        => { out!(stringify!($yes)); };
-        }
-    };
-}
-
-macro_rules! yesno {
-    ($yes:ident, $no:ident) => { scream!($yes, $no); scream!($no, $yes); };
-}
-
-yesno!(yes, no);
-yesno!(Yes, No);
-yesno!(YES, NO);
+pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
+pub fn Yes(b: bool) -> &'static str { if b { "Yes" } else { "No" } }
+pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
 
 }
 

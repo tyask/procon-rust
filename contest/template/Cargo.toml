@@ -55,5 +55,6 @@ smallvec = "=1.2.0"
 [dev-dependencies]
 
 [features]
-default = ["template"]
+default = ["template", "local"]
 template = []
+local = []

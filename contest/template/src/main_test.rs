@@ -19,19 +19,6 @@ mod tests {
     }
 
     #[test]
-    fn test_out() {
-        out!(2);
-        out!(2, 3);
-        out!(2.123);
-        out!(vec![1,2,3]);
-
-        out!(vec![1,2,3];byline);
-        out!(vec!["ab","cd","ef"];byline);
-
-        out!(vec![1,2,3];debug);
-    }
-
-    #[test]
     fn test_chmax_chmin() {
         {
             let mut m = 0;
@@ -39,9 +26,9 @@ mod tests {
                 assert_eq!(chmax(v, &mut m), exp_updated);
                 assert_eq!(m, exp_val);
             };
-            do_chmax(1, true,  1);
-            do_chmax(1, false, 1);
-            do_chmax(0, false, 1);
+            do_chmax(&1, true,  1);
+            do_chmax(&1, false, 1);
+            do_chmax(&0, false, 1);
         }
 
         {
@@ -51,9 +38,9 @@ mod tests {
                 assert_eq!(m, exp_val);
             };
 
-            do_chmin(0, true,  0);
-            do_chmin(0, false, 0);
-            do_chmin(1, false, 0);
+            do_chmin(&0, true,  0);
+            do_chmin(&0, false, 0);
+            do_chmin(&1, false, 0);
         }
     }
 }
