@@ -62,7 +62,7 @@
 		"prefix": "fij", "body": [ "for i in 0..$1 { for j in 0..$2 {$3}}" ],
 	},
 	"for (i, j) ...": {
-		"prefix": "fij2", "body": [ "for (i, j) in itertools::iproduct!(0..$1, 0..$2) {$3}" ],
+		"prefix": "fij2", "body": [ "for (i, j) in iproduct!(0..$1, 0..$2) {$3}" ],
 	},
 	"for &() in &": {
 		"prefix": "fin", "body": [ "for &($1) in &$2 {$3}" ],

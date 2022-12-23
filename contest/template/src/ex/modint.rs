@@ -8,8 +8,8 @@ pub type Modint1000000007 = Modint<Modules1000000007>;
 pub type Modint998244353  = Modint<Modules998244353>;
 
 pub trait Modules: Clone + Copy { const MOD: usize; }
-#[derive(Clone, Copy)] pub enum Modules1000000007 { }
-#[derive(Clone, Copy)] pub enum Modules998244353 { }
+#[derive(Clone, Copy, PartialEq)] pub enum Modules1000000007 { }
+#[derive(Clone, Copy, PartialEq)] pub enum Modules998244353 { }
 impl Modules for Modules1000000007 { const MOD: usize = 1_000_000_007; }
 impl Modules for Modules998244353  { const MOD: usize =   998_244_353; }
 
@@ -60,4 +60,53 @@ impl<M: Modules> DivAssign<usize> for Modint<M> { fn div_assign(&mut self, rhs: 
 }
 impl_op!(Modint<M>, usize);
 
+}
+
+
+#[allow(dead_code)]
+pub mod combination {
+use super::modint::{Modint, Modules};
+
+// combination
+struct Combination<M> { facts: Vec<Modint<M>>, ifacts: Vec<Modint<M>> }
+impl<M: Modules> Combination<M> {
+    pub fn new(n: usize) -> Combination<M> {
+        assert!(n < M::MOD);
+        let mut facts  = vec![Modint::<M>::zero(); n+1];
+        let mut ifacts = vec![Modint::<M>::zero(); n+1];
+        facts[0] = Modint::<M>::one();
+        for i in 1..n+1 { facts[i] = facts[i-1]*i; }
+        ifacts[n] = facts[n].inv();
+        for i in (1..n+1).rev() { ifacts[i-1] = ifacts[i]*i; }
+        Combination{facts: facts, ifacts: ifacts}
+    }
+
+    // nCk
+    pub fn comb(&self, n: usize, k: usize) -> Modint<M> {
+        assert!(n < M::MOD);
+        if n < k { return Modint::<M>::zero(); }
+        self.fact(n) * self.ifact(k) * self.ifact(n-k)
+    }
+    // k!
+    pub fn fact(&self, k: usize)  -> Modint<M> { self.facts[k] }
+    pub fn ifact(&self, k: usize) -> Modint<M> { self.ifacts[k] }
+}
+
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ex::modint::modint::*;
+    type Mint = Modint1000000007;
+
+    #[test]
+    fn test_modint() {
+        let a = Mint::new(1);
+        let b = Mint::new(1000000008);
+        let e = Mint::new(1000000007);
+
+        assert_eq!(a,     b);
+        assert_eq!(a+e,   b);
+        assert_eq!(a + 1, Mint::new(2));
+    }
 }

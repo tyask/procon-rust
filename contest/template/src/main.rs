@@ -7,21 +7,21 @@ use fumin::*;
 fn main() {
 }
 
-#[allow(dead_code, unused_macros, non_snake_case)]
+#[allow(dead_code, unused_macros, non_snake_case, non_camel_case_types)]
 pub mod fumin {
 use std::{*, ops::*, collections::*};
 
-pub type Us        = usize;
-pub type Is        = isize;
-pub type Us1       = proconio::marker::Usize1;
-pub type Is1       = proconio::marker::Isize1;
-pub type Chars     = proconio::marker::Chars;
-pub type Bytes     = proconio::marker::Bytes;
+pub type us        = usize;
+pub type is        = isize;
+pub type us1       = proconio::marker::Usize1;
+pub type is1       = proconio::marker::Isize1;
+pub type chars     = proconio::marker::Chars;
+pub type bytes     = proconio::marker::Bytes;
 pub type Str       = String;
-pub type Map<K,V>  = HashMap<K,V>;
-pub type BMap<K,V> = BTreeMap<K,V>;
-pub type Set<V>    = HashSet<V>;
-pub type BSet<V>   = BTreeSet<V>;
+pub type map<K,V>  = HashMap<K,V>;
+pub type bmap<K,V> = BTreeMap<K,V>;
+pub type set<V>    = HashSet<V>;
+pub type bset<V>   = BTreeSet<V>;
 
 // PrimNum
 pub trait PartialPrimNum:
@@ -120,18 +120,27 @@ pub fn sumae<N:PrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_is(2) }
 pub fn sumad<N:PrimInt>(n: N, a: N, d: N) -> N { n * (N::from_is(2) * a + (n - N::ONE) * d) / N::from_is(2) }
 pub fn ndigits<N:PrimInt>(mut n: N) -> usize { let mut d = 0; while n > N::ZERO { d+=1; n/=N::from_is(10); } d }
 
+pub trait VecTrait<T> {
+    fn counts(&self) -> map<T, us>;
+}
+impl<T: Default+Eq+hash::Hash+Copy> VecTrait<T> for Vec<T> {
+    fn counts(&self) -> map<T, usize> {
+        self.iter().fold(map::new(), |mut m, &x| { *m.or_def_mut(x) += 1; m})
+    }
+}
+
 pub trait MapTrait<K,V> {
     fn or_def(&self, k: &K)        -> V;
     fn or(&self, k: &K, v: V)      -> V;
     fn or_def_mut(&mut self, k: K) -> &mut V;
 }
 
-impl<K:Eq+hash::Hash, V:Default+Clone> MapTrait<K, V> for Map<K, V> {
+impl<K:Eq+hash::Hash, V:Default+Clone> MapTrait<K, V> for map<K, V> {
     fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
     fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
     fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
 }
-impl<K:Eq+Ord, V:Default+Clone> MapTrait<K, V> for BMap<K, V> {
+impl<K:Eq+Ord, V:Default+Clone> MapTrait<K, V> for bmap<K, V> {
     fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
     fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
     fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
@@ -141,7 +150,7 @@ pub trait BSetTrait<T> {
     fn lower_bound(&self, t: &T) -> Option<&T>;
     fn upper_bound(&self, t: &T) -> Option<&T>;
 }
-impl<T:Ord> BSetTrait<T> for BSet<T> {
+impl<T:Ord> BSetTrait<T> for bset<T> {
     fn lower_bound(&self, t: &T) -> Option<&T> { self.range(t..).next() }
     fn upper_bound(&self, t: &T) -> Option<&T> { self.range((Bound::Excluded(t), Bound::Unbounded)).next() }
 }
@@ -213,7 +222,7 @@ impl<N: Default+Add<Output=N>+Sub<Output=N>+Copy+Clone> CumSum<N> {
 pub struct Grid<T> { pub raw: Vec<Vec<T>> }
 impl<T: Clone> Grid<T> {
     pub fn from(v: &Vec<Vec<T>>) -> Grid<T> { Grid{raw: v.to_vec()} }
-    pub fn new(h: Us, w: Us, v: T) -> Grid<T> { Grid{raw: vec![vec![v; w]; h]} }
+    pub fn new(h: us, w: us, v: T) -> Grid<T> { Grid{raw: vec![vec![v; w]; h]} }
     pub fn inp<N:PartialIPrimNum>(&self, p: Pt<N>)    -> bool { self.inij(p.x, p.y) }
     pub fn inij<N:PartialIPrimNum>(&self, i: N, j: N) -> bool { 0<=i.is() && i.is()<self.raw.len().is() && 0<=j.is() && j.is()<self.raw[i.us()].len().is() }
     pub fn int<N:PartialIPrimNum>(&self, t: (N, N))   -> bool { self.inij(t.0, t.1) }
@@ -245,12 +254,6 @@ fmtx_primitive! {
     usize, isize, f32, f64, char, &str, String, bool
 }
 
-pub struct ByLine<'a, T> { pub v: &'a Vec<T> }
-impl<'a, T: Fmtx> ByLine<'a, T> { pub fn from(v: &'a Vec<T>) -> ByLine<'a, T> { ByLine{v} }}
-
-impl<'a, T: Fmtx> Fmtx for ByLine<'a, T> {
-    fn fmtx(&self) -> String { self.v.iter().map(|e| e.fmtx()).join("\n") }
-}
 impl<T: Fmtx> Fmtx for Vec<T> {
     fn fmtx(&self) -> String { self.iter().map(|e| e.fmtx()).join(" ") }
 }
@@ -268,7 +271,8 @@ impl<K: fmt::Display, V: Fmtx> Fmtx for HashMap<K, V> {
     ($a:expr, $($b:expr),*;line)  => {{ format!("{}\n{}", fmtx!(($a);line), fmtx!($($b),*;line)) }};
     ($a:expr;line)                => {{ ($a).fmtx() }};
 
-    ($a:expr;byline)              => {{ format!("{}", ByLine{v:&($a)}.fmtx()) }};
+    ($a:expr;byline) => {{ use itertools::Itertools; ($a).iter().map(|e| e.fmtx()).join("\n") }};
+    ($a:expr;grid)   => {{ use itertools::Itertools; ($a).iter().map(|v| v.iter().collect::<Str>()).join("\n") }};
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {

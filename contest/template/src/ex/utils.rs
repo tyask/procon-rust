@@ -12,6 +12,21 @@ pub fn divisors(n: usize) -> Vec<usize> {
     a
 }
 
+// 素数列挙
+pub fn primes(n: usize) -> Vec<usize> {
+    if n <= 1 { return vec![]; }
+
+    let mut sieve = vec![true; n+1];
+    sieve[0] = false;
+    sieve[1] = false;
+    let mut i = 2;
+    while i * i <= n {
+        if sieve[i] { for j in (i*i..=n).step_by(i) { sieve[j] = false; } }
+        i += 1;
+    }
+    sieve.iter().enumerate().filter(|p|*p.1).map(|p|p.0).collect()
+}
+
 // 素因数分解する.
 pub fn prime_fact(mut n: usize) -> BTreeMap<usize, usize> {
     let mut m = BTreeMap::new();
@@ -51,11 +66,28 @@ pub fn rot<T:Copy>(g: &Vec<Vec<T>>) -> Vec<Vec<T>> {
     for i in 0..h { for j in 0..w { a[j][h-1-i]=g[i][j]; }}
     a
 }
+
+pub fn to_base_n(mut x: usize, n: usize) {
+    let mut v = vec![];
+    while x > 0 { v.push(x%n); x/=n; }
+    v.reverse()
+}
+
 }
 
 #[cfg(test)]
 mod tests {
     use crate::ex::utils::utils::*;
+
+    #[test]
+    fn test_primes() {
+        assert_eq!(primes(0),  vec![]);
+        assert_eq!(primes(1),  vec![]);
+        assert_eq!(primes(2),  vec![2]);
+        assert_eq!(primes(50), vec![2,3,5,7,11,13,17,19,23,29,31,37,41,43,47]);
+        assert_eq!(primes(53), vec![2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53]);
+    }
+
 
     #[test]
     fn test_compress() {

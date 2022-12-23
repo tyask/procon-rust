@@ -9,16 +9,13 @@
 			"path": "contest/template"
 		},
 		{
-			"path": "contest/abc254"
+			"path": "contest/abc250"
 		},
 		{
-			"path": "contest/abc253"
+			"path": "contest/abc249"
 		},
 		{
-			"path": "contest/abc281"
-		},
-		{
-			"path": "contest/abc252"
+			"path": "contest/abc248"
 		}
 	],
 	"settings": {}
