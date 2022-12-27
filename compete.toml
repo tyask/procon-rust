@@ -133,6 +133,7 @@ path = "contest/{{ contest }}"
 #
 # Defaults to `"dev"`.
 #profile = "dev"
+profile = "release"
 
 #[submit.transpile]
 #kind = "command"

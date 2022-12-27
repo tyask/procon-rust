@@ -73,6 +73,23 @@ pub fn to_base_n(mut x: usize, n: usize) {
     v.reverse()
 }
 
+// 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.
+// g: グラフを表す隣接リスト
+fn colorize_bipartite(g: &Vec<Vec<usize>>) -> Result<Vec<isize>,()> {
+    let mut col = vec![-1; g.len()];
+    fn dfs(g: &Vec<Vec<usize>>, col: &mut Vec<isize>, v: usize, c: isize) -> bool {
+        if col[v] >= 0 { return true; }
+        col[v] = c;
+        for &n in &g[v] {
+            if col[n] == c || col[n] < 0 && !dfs(g, col, n, 1-c) { return false; }
+        }
+        true
+    }
+
+    for v in 0..g.len() { if !dfs(&g, &mut col, v, 0) { return Err(()); } }
+    Ok(col)
+}
+
 }
 
 #[cfg(test)]

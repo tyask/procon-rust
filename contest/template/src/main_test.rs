@@ -5,17 +5,17 @@ mod tests {
 
     #[test]
     fn test_fmtx() {
-        assert_eq!(fmtx!(2),           "2");
-        assert_eq!(fmtx!(2, 3),        "2 3");
-        assert_eq!(fmtx!(2.123),       "2.123");
-        assert_eq!(fmtx!(vec![1,2,3]), "1 2 3");
+        assert_eq!(fmt!(2),           "2");
+        assert_eq!(fmt!(2, 3),        "2 3");
+        assert_eq!(fmt!(2.123),       "2.123");
+        assert_eq!(fmt!(vec![1,2,3]), "1 2 3");
 
-        assert_eq!(fmtx!(2, 3;line),        "2\n3");
+        assert_eq!(fmt!(@line 2, 3),        "2\n3");
 
-        assert_eq!(fmtx!(vec![1,2,3];byline),          "1\n2\n3");
-        assert_eq!(fmtx!(vec!["ab","cd","ef"];byline), "ab\ncd\nef");
+        assert_eq!(fmt!(@byline vec![1,2,3]),          "1\n2\n3");
+        assert_eq!(fmt!(@byline vec!["ab","cd","ef"]), "ab\ncd\nef");
 
-        assert_eq!(fmtx!(vec![1,2,3];debug), "[1, 2, 3]");
+        assert_eq!(fmt!(@debug vec![1,2,3]), "[1, 2, 3]");
     }
 
     #[test]
