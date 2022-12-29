@@ -3,6 +3,13 @@ pub mod utils {
 
 use std::collections::BTreeMap;
 
+pub fn is_price(n: usize) -> bool {
+    if n <= 1 { return false; }
+    let mut i = 2;
+    while i * i <= n { if n % i == 0 { return false; } i += 1; }
+    true
+}
+
 // 約数を列挙する
 pub fn divisors(n: usize) -> Vec<usize> {
     let mut a = Vec::new();

@@ -3,6 +3,7 @@
 pub mod modint {
 use std::{ops::*, marker::PhantomData, io::BufRead, fmt::{Display, Formatter, Debug}, iter::Sum};
 use proconio::source::{Readable, Source};
+use crate::common::Unit;
 
 pub type Modint1000000007 = Modint<Modules1000000007>;
 pub type Modint998244353  = Modint<Modules998244353>;
@@ -21,9 +22,7 @@ pub struct Modint<M> {
 
 impl<M: Modules> Modint<M> {
     const MOD: usize = M::MOD;
-    pub fn new(val: usize) -> Modint<M> { let m = Self::MOD; Modint{val: (val%m+m)%m, phantom: PhantomData} }
-    pub fn zero() -> Modint<M> { Self::new(0) }
-    pub fn one()  -> Modint<M> { Self::new(1) }
+    pub const fn new(val: usize) -> Modint<M> { let m = Self::MOD; Modint{val: (val%m+m)%m, phantom: PhantomData} }
     pub fn pow(self, t: usize) -> Modint<M> {
         if t == 0 { return Self::new(1); }
         let mut a = self.pow(t>>1);
@@ -35,11 +34,20 @@ impl<M: Modules> Modint<M> {
     fn normalize(&mut self) { if self.val >= Self::MOD { self.val -= Self::MOD; } }
 }
 
-impl<M: Modules> Default  for Modint<M> { fn default() -> Self { Self::new(0) } }
+impl<M: Modules> Default  for Modint<M> { fn default() -> Self { Self::ZERO } }
 impl<M: Modules> Display  for Modint<M> { fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.val) } }
 impl<M: Modules> Debug    for Modint<M> { fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { Display::fmt(&self, f) } }
 impl<M: Modules> Readable for Modint<M> { type Output = Modint<M>; fn read<R: BufRead, S: Source<R>>(source: &mut S) -> Self::Output { Modint::new(usize::read(source)) } }
-impl<M: Modules> Sum      for Modint<M> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::zero(), |a, b| a + b) } }
+impl<M: Modules> Sum      for Modint<M> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::ZERO, |a, b| a + b) } }
+
+impl<M: Modules> crate::common::From<isize> for Modint<M> { fn from(n: isize) -> Self { Self::new(n as usize) } }
+impl<M: Modules> crate::common::From<usize> for Modint<M> { fn from(n: usize) -> Self { Self::new(n) } }
+impl<M: Modules> crate::common::Unit for Modint<M> {
+    const ZERO: Self = Modint::new(0);
+    const ONE:  Self = Modint::new(1);
+    const TWO:  Self = Modint::new(2);
+    const TEN:  Self = Modint::new(10);
+}
 
 impl<M: Modules> AddAssign for Modint<M> { fn add_assign(&mut self, rhs: Self) { self.val += rhs.val; self.normalize(); } }
 impl<M: Modules> SubAssign for Modint<M> { fn sub_assign(&mut self, rhs: Self) { self.val += Self::MOD-rhs.val; self.normalize(); } }
@@ -66,15 +74,16 @@ impl_op!(Modint<M>, usize);
 #[allow(dead_code)]
 pub mod combination {
 use super::modint::{Modint, Modules};
+use crate::common::Unit;
 
 // combination
 struct Combination<M> { facts: Vec<Modint<M>>, ifacts: Vec<Modint<M>> }
 impl<M: Modules> Combination<M> {
     pub fn new(n: usize) -> Combination<M> {
         assert!(n < M::MOD);
-        let mut facts  = vec![Modint::<M>::zero(); n+1];
-        let mut ifacts = vec![Modint::<M>::zero(); n+1];
-        facts[0] = Modint::<M>::one();
+        let mut facts  = vec![Modint::<M>::ZERO; n+1];
+        let mut ifacts = vec![Modint::<M>::ZERO; n+1];
+        facts[0] = Modint::<M>::ONE;
         for i in 1..n+1 { facts[i] = facts[i-1]*i; }
         ifacts[n] = facts[n].inv();
         for i in (1..n+1).rev() { ifacts[i-1] = ifacts[i]*i; }
@@ -84,7 +93,7 @@ impl<M: Modules> Combination<M> {
     // nCk
     pub fn comb(&self, n: usize, k: usize) -> Modint<M> {
         assert!(n < M::MOD);
-        if n < k { return Modint::<M>::zero(); }
+        if n < k { return Modint::<M>::ZERO; }
         self.fact(n) * self.ifact(k) * self.ifact(n-k)
     }
     // k!

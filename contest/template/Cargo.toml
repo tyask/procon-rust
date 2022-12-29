@@ -7,9 +7,9 @@ edition = "2018"
 name = "template-main"
 path = "src/main.rs"
 
-[[bin]]
-name = "exmain"
-path = "src/exmain.rs"
+[lib]
+name = "lib"
+path = "src/lib.rs"
 
 [dependencies]
 num = "=0.2.1"

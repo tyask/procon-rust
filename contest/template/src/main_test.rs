@@ -1,7 +1,7 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::{fumin::*, *};
+    use crate::{common::*, *};
 
     #[test]
     fn test_fmtx() {

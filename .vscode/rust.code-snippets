@@ -25,7 +25,7 @@
 		"prefix": "p3", "body": [ "println!(\"{} {} {}\", $1, $2, $3);" ],
 	},
 	"println!(\"{}\", fmtx!())": {
-		"prefix": "px", "body": [ "println!(\"{}\", fmtx!($1));" ],
+		"prefix": "pf", "body": [ "println!(\"{}\", fmt!($1));" ],
 	},
 	"print(yes)": {
 		"prefix": "py", "body": [ "println!(\"yes\");" ],
