@@ -1,0 +1,1 @@
+fn hello2() -> String { "Hello".to_string() }

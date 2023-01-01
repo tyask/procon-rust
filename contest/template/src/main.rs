@@ -122,28 +122,38 @@ pub trait IterTrait : Iterator where Self::Item: hash::Hash+Eq {
 
 impl<T: ?Sized> IterTrait for T where T: Iterator, Self::Item: hash::Hash+Eq { }
 
-pub trait VecTrait<T> {
-    fn fill(&mut self, t: T);
-}
-impl<T:Clone+Copy> VecTrait<T> for Vec<T> {
-    fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t); }
-}
+// Vec
+pub trait VecFill<T>  { fn fill(&mut self, t: T); }
+pub trait VecOrDef<T> { fn or_def(&self, i: us) -> T; }
+pub trait VecOr<T>    { fn or<'a>(&'a self, i: us, v: &'a  T) -> &'a T; }
 
-pub trait MapTrait<K,V> {
-    fn or_def(&self, k: &K)        -> V;
-    fn or(&self, k: &K, v: V)      -> V;
-    fn or_def_mut(&mut self, k: K) -> &mut V;
-}
+impl<T:Clone+Copy> VecFill<T>          for Vec<T> { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t); } }
+impl<T:Clone+Copy+Default> VecOrDef<T> for Vec<T> { fn or_def(&self, i: us) -> T { self.get(i).cloned().unwrap_or_default() } }
+impl<T:Clone+Copy> VecOr<T>            for Vec<T> { fn or<'a>(&'a self, i: us, v: &'a T) -> &'a T  { self.get(i).unwrap_or(v) } }
 
-impl<K:Eq+hash::Hash, V:Default+Clone> MapTrait<K, V> for map<K, V> {
-    fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
-    fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
+// Map
+pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
+pub trait MapOrDefMut<K,V> { fn or_def_mut(&mut self, k: K) -> &mut V; }
+pub trait MapOr<K,V> { fn or<'a>(&'a self, k: &K, v: &'a  V) -> &'a V; }
+
+impl<K:Eq+hash::Hash, V:Default+Clone> MapOrDef<K, V> for map<K, V> {
+    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
+}
+impl<K:Eq+hash::Hash, V:Default> MapOrDefMut<K, V> for map<K, V> {
     fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
 }
-impl<K:Eq+Ord, V:Default+Clone> MapTrait<K, V> for bmap<K, V> {
-    fn or_def(&self, k: &K)        -> V      { self.get(&k).cloned().unwrap_or_default() }
-    fn or(&self, k: &K, v: V)      -> V      { self.get(&k).cloned().unwrap_or(v) }
+impl<K:Eq+hash::Hash, V> MapOr<K, V> for map<K, V> {
+    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
+}
+
+impl<K:Ord, V:Default+Clone> MapOrDef<K, V> for bmap<K, V> {
+    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
+}
+impl<K:Ord, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
     fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+}
+impl<K:Ord, V> MapOr<K, V> for bmap<K, V> {
+    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
 }
 
 pub trait BSetTrait<T> {

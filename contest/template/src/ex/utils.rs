@@ -3,6 +3,7 @@ pub mod utils {
 
 use std::collections::BTreeMap;
 
+// 素数判定
 pub fn is_price(n: usize) -> bool {
     if n <= 1 { return false; }
     let mut i = 2;

@@ -54,6 +54,12 @@
 	"print(NO)": {
 		"prefix": "pn", "body": [ "println!(\"NO\");" ],
 	},
+	"debug1()": {
+		"prefix": "d1", "body": [ "println!(\"{:?}\", $1);" ],
+	},
+	"debug2()": {
+		"prefix": "d2", "body": [ "println!(\"{:?}, {:?}\", $1, $2);" ],
+	},
 
 	"for i in 0..": {
 		"prefix": "fi", "body": [ "for i in 0..$1 {$2}" ],
