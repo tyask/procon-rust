@@ -1,7 +1,7 @@
 use std::{path::PathBuf, io::{Write, BufWriter, BufReader, BufRead, Read}, error::Error, fs, collections::VecDeque, mem, rc::{Rc, Weak}, cell::RefCell};
 use id_tree::*;
 use itertools::Itertools;
-use regex::{Regex, RegexSet};
+use regex::Regex;
 
 pub struct CargoCapture {
     module_project: PathBuf,
@@ -31,18 +31,14 @@ impl CargoCapture {
         for (i, line) in r.lines().map(|r| r.unwrap()).enumerate() {
             if let Some(cap) = re_cap.captures(&line) {
                 // キャプチャ行
-                tree.insert(
-                    Node::new(Token::Capture(line.to_owned(), cap["MOD"].to_owned())),
-                    InsertBehavior::UnderNode(&curr_node_id))?;
-                continue;
+                tree.insert_under(Token::Capture(line.to_owned(), cap["MOD"].to_owned()), &curr_node_id)?;
             } else if re_mod.is_match(&line) {
                 // モジュール定義行
                 // モジュール定義行にはモジュール定義以外のトークンは来ないことを前提とする.
                 for cap in re_mod.captures_iter(&line) {
                     let module = cap["MOD"].to_owned();
-                    curr_node_id = tree.insert(
-                        Node::new(Token::Module(cap["TOKEN"].to_owned(), module.to_owned())),
-                        InsertBehavior::UnderNode(&curr_node_id))?;
+                    curr_node_id = tree.insert_under(
+                        Token::Module(cap["TOKEN"].to_owned(), module.to_owned()), &curr_node_id)?;
                     st_mod.push_back((module.to_owned(), 1));
                 }
             } else {
@@ -63,9 +59,7 @@ impl CargoCapture {
                 }
 
                 if !moduled_closed {
-                    tree.insert(
-                        Node::new(Token::Src(line.to_owned())),
-                        InsertBehavior::UnderNode(&curr_node_id))?;
+                    tree.insert_under(Token::Src(line.to_owned()), &curr_node_id)?;
                 }
             }
         }
@@ -108,7 +102,11 @@ impl CargoCapture {
             }
         }
         let path = self.module_project.join("src").join(module.replace("::", "/") + ".rs");
-        let root_id = self.parse_to(BufReader::new(fs::read_to_string(path)?.as_bytes()), tree, &n)?;
+        let s = BufReader::new(fs::read_to_string(path)?.as_bytes()).lines()
+                .map(|r| r.unwrap() + "\n")
+                .take_while(|s| !s.starts_with("// CAP(IGNORE_BELOW)"))
+                .collect::<String>();
+        let root_id = self.parse_to(BufReader::new(s.as_bytes()), tree, &n)?;
         Ok(root_id)
     }
 
@@ -187,6 +185,7 @@ enum CapError {
 
 trait TreeTrait<T> {
     fn find_parent_module(&self, module: &str) -> Option<NodeId>;
+    fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError>;
 }
 
 impl TreeTrait<Token> for Tree<Token> {
@@ -213,8 +212,11 @@ impl TreeTrait<Token> for Tree<Token> {
         Some(id.unwrap())
     }
 
-
+    fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError> {
+        self.insert(Node::new(t), InsertBehavior::UnderNode(parent))
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
