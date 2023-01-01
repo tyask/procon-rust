@@ -1,4 +1,4 @@
-use std::{path::PathBuf, io::{Write, BufWriter, BufReader, BufRead, Read}, error::Error, fs, collections::VecDeque, mem, rc::{Rc, Weak}, cell::RefCell};
+use std::{path::PathBuf, io::{Write, BufWriter, BufReader, BufRead, Read}, error::Error, fs, collections::VecDeque};
 use id_tree::*;
 use itertools::Itertools;
 use regex::Regex;
@@ -10,7 +10,7 @@ pub struct CargoCapture {
 impl CargoCapture {
     pub fn new(module_project_path: &str) -> CargoCapture { CargoCapture { module_project: PathBuf::from(module_project_path) }}
 
-    pub fn execute<R:Read>(&self, r: BufReader<R>) -> Result<String, Box<dyn Error>> {
+    pub fn capture<R:Read>(&self, r: BufReader<R>) -> Result<String, Box<dyn Error>> {
         let mut tree = Tree::new();
         let root_id = tree.insert(Node::new(Token::Root), InsertBehavior::AsRoot).unwrap();
         self.parse_to(r, &mut tree, &root_id).unwrap();
@@ -225,7 +225,7 @@ mod tests {
     use super::CargoCapture;
 
     #[test]
-    fn test_execute() {
+    fn test_capture() {
         let content =
 r#"aaa
 pub mod a {
@@ -253,12 +253,12 @@ bbb
 "#.to_string();
 
         let cap = CargoCapture::new(".");
-        let s = cap.execute(BufReader::new(content.as_bytes())).unwrap();
+        let s = cap.capture(BufReader::new(content.as_bytes())).unwrap();
         assert_eq!(s, expected);
     }
 
     #[test]
-    fn test_execute_inline() {
+    fn test_capture_in_module_file() {
         let content =
 r#"aaa
 // CAP(capture::test::mod3)
@@ -279,7 +279,7 @@ bbb
 "#.to_string();
 
         let cap = CargoCapture::new(".");
-        let s = cap.execute(BufReader::new(content.as_bytes())).unwrap();
+        let s = cap.capture(BufReader::new(content.as_bytes())).unwrap();
         println!("{}", s);
         assert_eq!(s, expected);
     }

@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let target_file = m.get_one::<String>("target").expect("required").to_owned();
 
     let main = CargoCapture::new(&module_project);
-    let completed = main.execute(BufReader::new(File::open(&target_file)?))?;
+    let completed = main.capture(BufReader::new(File::open(&target_file)?))?;
 
     let tmp_file = "tmp.rs";
     let mut w = BufWriter::new(File::create(&tmp_file)?);
