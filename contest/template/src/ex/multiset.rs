@@ -1,6 +1,5 @@
 
-#[allow(dead_code)]
-pub mod multiset {
+#![allow(dead_code)]
 use std::{collections::BTreeSet, ops::{RangeBounds, Bound}};
 
 struct MultiSet<V> {
@@ -25,7 +24,5 @@ impl<V:Clone+Copy+Ord> MultiSet<V> {
         self.m.range((s, e)).map(|p|p.0)
     }
     pub fn contains(&self, v: &V) -> bool { self.range(v..=v).next().is_some() }
-}
-
 }
 

@@ -76,37 +76,33 @@ impl CargoCapture {
         if let Token::Capture(_, module) = tree.get(&cap_id).unwrap().data().clone() {
             // キャプチャ行自体はRootにして出力されないようにする
             tree.get_mut(&cap_id).unwrap().replace_data(Token::Root);
-            if let Some(id) = tree.find_parent_module(&module) {
-                // 既に親モジュールがある場合はその下に定義する.
-                let id = self.parse_from_module_to(&module, tree, &id, true).unwrap();
-                Ok(Some(id))
-            } else {
-                // 親モジュールがない場合はキャプチャ行にモジュールを展開する.
-                let id = self.parse_from_module_to(&module, tree, &cap_id, false)?;
-                Ok(Some(id))
-            }
+            
+            // モジュールを展開
+            self.parse_from_module_to(&module, tree).and_then(|id| Ok(Some(id)))
         } else {
             unreachable!()
         }
 
     }
 
-    fn parse_from_module_to(&self, module: &str, tree: &mut Tree<Token>, parent: &NodeId, child_only: bool) -> Result<NodeId, Box<dyn Error>> {
-        let mut n = parent.clone();
-        if child_only {
-            let m = module.split("::").into_iter().last().unwrap();
-            n = tree.insert(Node::new(Token::Module(format!("mod {} {{", m), m.to_owned())), InsertBehavior::UnderNode(&n)).unwrap();
-        } else {
-            for m in module.split("::") {
-                n = tree.insert(Node::new(Token::Module(format!("mod {} {{", m), m.to_owned())), InsertBehavior::UnderNode(&n)).unwrap();
+    fn parse_from_module_to(&self, module: &str, tree: &mut Tree<Token>) -> Result<NodeId, Box<dyn Error>> {
+
+        // 展開先を探索し、なければ作成する.
+        let mut parent = tree.root_node_id().cloned().unwrap();
+        for m in module.split("::") {
+            if let Some(id) = tree.lookup_module_under(m, &parent) {
+                parent = id;
+            } else {
+                parent = tree.insert_under(Token::Module(format!("mod {} {{", m), m.to_owned()), &parent)?;
             }
         }
+
         let path = self.module_project.join("src").join(module.replace("::", "/") + ".rs");
         let s = BufReader::new(fs::read_to_string(path)?.as_bytes()).lines()
                 .map(|r| r.unwrap() + "\n")
                 .take_while(|s| !s.starts_with("// CAP(IGNORE_BELOW)"))
                 .collect::<String>();
-        let root_id = self.parse_to(BufReader::new(s.as_bytes()), tree, &n)?;
+        let root_id = self.parse_to(BufReader::new(s.as_bytes()), tree, &parent)?;
         Ok(root_id)
     }
 
@@ -184,32 +180,34 @@ enum CapError {
 }
 
 trait TreeTrait<T> {
-    fn find_parent_module(&self, module: &str) -> Option<NodeId>;
+    fn find_parent_module(&self, module: &str) -> NodeId;
+    fn lookup_module_under(&self, module: &str, parent: &NodeId) -> Option<NodeId>;
     fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError>;
 }
 
 impl TreeTrait<Token> for Tree<Token> {
-    fn find_parent_module(&self, module: &str) -> Option<NodeId> {
-        let id = self.root_node_id();
-        if id.is_none() { return None; }
-
+    fn find_parent_module(&self, module: &str) -> NodeId {
         let mods = module.split("::").collect_vec();
-        let mut id = Some(id.unwrap().clone());
-        if mods.len() <= 1 { return id; }
-
+        let mut id = self.root_node_id().cloned().unwrap();
         for m in mods.iter().take(mods.len()-1) {
-            id = self.traverse_pre_order_ids(&id.unwrap()).unwrap()
-                .find(|i| {
-                    if let Token::Module(_, module) = self.get(i).unwrap().data() {
-                        module == m
-                    } else {
-                        false
-                    }
-                });
-            if id.is_none() { return None; }
+            if let Some(next) = self.lookup_module_under(m, &id) {
+                id = next;
+            } else {
+                return id;
+            }
         }
+        id
+    }
 
-        Some(id.unwrap())
+    fn lookup_module_under(&self, module: &str, parent: &NodeId) -> Option<NodeId> {
+        self.traverse_pre_order_ids(parent).unwrap()
+            .find(|id| {
+                if let Token::Module(_, m) = self.get(id).unwrap().data() {
+                    module == m
+                } else {
+                    false
+                }
+            })
     }
 
     fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError> {
@@ -241,6 +239,7 @@ r#"aaa
 pub mod a {
     xxx
 }
+bbb
 mod capture { mod test {
 mod mod1 {
 fn hello1() -> String { "Hello".to_string() }
@@ -249,7 +248,6 @@ mod mod2 {
 fn hello2() -> String { "Hello".to_string() }
 }
 }}
-bbb
 "#.to_string();
 
         let cap = CargoCapture::new(".");
@@ -267,6 +265,7 @@ bbb
 
         let expected =
 r#"aaa
+bbb
 mod capture { mod test {
 mod mod3 {
 fn hello3() -> String { "Hello".to_string() }
@@ -275,7 +274,6 @@ mod mod2 {
 fn hello2() -> String { "Hello".to_string() }
 }
 }}
-bbb
 "#.to_string();
 
         let cap = CargoCapture::new(".");

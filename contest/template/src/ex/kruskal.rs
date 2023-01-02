@@ -1,7 +1,6 @@
 
-// pub mod kruskal {
-// use super::super::unionfind::unionfind::Unionfind;
-use super::unionfind::unionfind::Unionfind;
+#![allow(dead_code)]
+use crate::ex::unionfind::Unionfind;
 
 #[derive(Clone,Copy)]
 pub struct Edge { u: usize, v: usize, cost: isize }
@@ -21,5 +20,3 @@ impl Kraskal {
         return ret;
     }
 }
-
-// }

@@ -1,7 +1,4 @@
-#[allow(dead_code)]
-pub mod utils {
-
-use std::collections::BTreeMap;
+#![allow(dead_code)]
 
 // 素数判定
 pub fn is_price(n: usize) -> bool {
@@ -36,8 +33,8 @@ pub fn primes(n: usize) -> Vec<usize> {
 }
 
 // 素因数分解する.
-pub fn prime_fact(mut n: usize) -> BTreeMap<usize, usize> {
-    let mut m = BTreeMap::new();
+pub fn prime_fact(mut n: usize) -> std::collections::BTreeMap<usize, usize> {
+    let mut m = std::collections::BTreeMap::new();
     let mut d = 2;
     while d * d <= n {
         let mut e = 0;
@@ -98,11 +95,11 @@ fn colorize_bipartite(g: &Vec<Vec<usize>>) -> Result<Vec<isize>,()> {
     Ok(col)
 }
 
-}
+// CAP(IGNORE_BELOW)
 
 #[cfg(test)]
 mod tests {
-    use crate::ex::utils::utils::*;
+    use crate::ex::utils::*;
 
     #[test]
     fn test_primes() {

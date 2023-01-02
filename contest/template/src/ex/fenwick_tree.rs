@@ -1,10 +1,10 @@
 
-#[allow(dead_code)]
-mod fenwick_tree {
+#![allow(dead_code)]
 use std::*;
 
 // 1-indexed
 struct FenwickTree { n: usize, dat: Vec<isize> }
+
 impl FenwickTree {
     pub fn new(n: usize) -> FenwickTree { FenwickTree{ n: n, dat: vec![0; n] } }
 
@@ -50,6 +50,4 @@ pub fn count_inversions(v: Vec<usize>) -> usize {
         t.add(x, 1);
     }
     r
-}
-
 }

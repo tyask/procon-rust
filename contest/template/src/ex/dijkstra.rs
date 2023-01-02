@@ -1,6 +1,5 @@
 
-#[allow(dead_code)]
-mod dijkstra {
+#![allow(dead_code)]
 use std::{*, cmp::Reverse};
 
 #[derive(Clone, Copy, Debug)]
@@ -62,6 +61,4 @@ impl Dijkstra {
     }
 
     fn chmin(target: &mut isize, value: isize) -> bool { if *target > value { *target = value; true } else { false } }
-}
-
 }

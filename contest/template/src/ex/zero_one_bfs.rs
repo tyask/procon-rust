@@ -1,5 +1,4 @@
-#[allow(dead_code)]
-mod zero_one_bfs {
+#![allow(dead_code)]
 
 pub struct ZeroOneBfs {
     pub g: Vec<Vec<(usize, isize)>>
@@ -33,6 +32,4 @@ impl ZeroOneBfs {
         }
         dist
     }
-}
-
 }

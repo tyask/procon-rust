@@ -1,6 +1,5 @@
 
-#[allow(dead_code)]
-pub mod unionfind {
+#![allow(dead_code)]
 
 pub struct Unionfind { d: Vec<isize> }
 
@@ -34,7 +33,5 @@ impl Unionfind {
         for i in 0..n { res[leader_buf[i]].push(i); }
         res.iter().filter(|v|v.len()>0).cloned().collect()
     }
-}
-
 }
 

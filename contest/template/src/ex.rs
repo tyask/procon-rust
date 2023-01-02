@@ -1,3 +1,4 @@
+pub mod combination;
 pub mod dijkstra;
 pub mod fenwick_tree;
 pub mod kruskal;
