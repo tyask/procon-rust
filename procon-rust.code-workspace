@@ -15,6 +15,18 @@
 		{
 			"name": "abc235",
 			"path": "contest/abc235"
+		},
+		{
+			"path": "contest/abc234"
+		},
+		{
+			"path": "contest/abc233"
+		},
+		{
+			"path": "contest/abc232"
+		},
+		{
+			"path": "contest/abc231"
 		}
 	],
 	"settings": {}

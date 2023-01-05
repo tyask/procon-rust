@@ -93,7 +93,7 @@ impl CargoCapture {
             if let Some(id) = tree.lookup_module_under(m, &parent) {
                 parent = id;
             } else {
-                parent = tree.insert_under(Token::Module(format!("mod {} {{", m), m.to_owned()), &parent)?;
+                parent = tree.insert_under(Token::Module(format!("pub mod {} {{", m), m.to_owned()), &parent)?;
             }
         }
 
@@ -240,11 +240,11 @@ pub mod a {
     xxx
 }
 bbb
-mod capture { mod test {
-mod mod1 {
+pub mod capture { pub mod test {
+pub mod mod1 {
 fn hello1() -> String { "Hello".to_string() }
 }
-mod mod2 {
+pub mod mod2 {
 fn hello2() -> String { "Hello".to_string() }
 }
 }}
@@ -266,11 +266,11 @@ bbb
         let expected =
 r#"aaa
 bbb
-mod capture { mod test {
-mod mod3 {
+pub mod capture { pub mod test {
+pub mod mod3 {
 fn hello3() -> String { "Hello".to_string() }
 }
-mod mod2 {
+pub mod mod2 {
 fn hello2() -> String { "Hello".to_string() }
 }
 }}

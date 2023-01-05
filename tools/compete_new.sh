@@ -6,7 +6,10 @@ echo "$OUT"
 
 TEMPLATE=$(dirname $0)/../contest/template
 PACKAGE=$(echo $OUT | head -n1 | awk '{print $5}' | sed 's|\\|/|g')
-find $PACKAGE -name '*.rs' | while read SRC; do cat $TEMPLATE/src/main.rs > $SRC; done
+find $PACKAGE -name '*.rs' | while read SRC; do
+    cat $TEMPLATE/src/main.rs > $SRC;
+    cargo capture --module $TEMPLATE --target $SRC
+done
 cp -r $TEMPLATE/.vscode $PACKAGE
 
 echo '''
