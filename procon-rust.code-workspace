@@ -27,6 +27,15 @@
 		},
 		{
 			"path": "contest/abc231"
+		},
+		{
+			"path": "contest/abc230"
+		},
+		{
+			"path": "contest/abc229"
+		},
+		{
+			"path": "contest/abc284"
 		}
 	],
 	"settings": {}

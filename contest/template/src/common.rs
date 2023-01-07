@@ -290,7 +290,7 @@ impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e|
     (@line $a:expr)               => {{ ($a).fmt() }};
 
     (@byline $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|e| e.fmt()).join("\n") }};
-    (@gird   $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|v| v.iter().collect::<Str>()).join("\n") }};
+    (@grid   $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|v| v.iter().collect::<Str>()).join("\n") }};
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
@@ -303,6 +303,9 @@ impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e|
 pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
 pub fn Yes(b: bool) -> &'static str { if b { "Yes" } else { "No" } }
 pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
+pub fn no(b: bool) -> &'static str { yes(!b) }
+pub fn No(b: bool) -> &'static str { Yes(!b) }
+pub fn NO(b: bool) -> &'static str { YES(!b) }
 
 // CAP(IGNORE_BELOW)
 #[cfg(test)]

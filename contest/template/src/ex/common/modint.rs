@@ -71,7 +71,7 @@ impl_op!(Modint<M>, usize);
 // CAP(IGNORE_BELOW)
 #[cfg(test)]
 mod tests {
-    use crate::ex::modint::*;
+    use super::*;
     type Mint = Modint1000000007;
 
     #[test]

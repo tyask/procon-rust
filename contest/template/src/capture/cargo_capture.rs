@@ -14,7 +14,9 @@ impl CargoCapture {
         let mut tree = Tree::new();
         let root_id = tree.insert(Node::new(Token::Root), InsertBehavior::AsRoot).unwrap();
         self.parse_to(r, &mut tree, &root_id).unwrap();
+        println!("{}", tree.to_debug_string()?);
         while let Some(_) = self.capture_one(&mut tree)? { }
+        println!("{}", tree.to_debug_string()?);
         self.compress_modules(&mut tree);
         self.to_string(&tree, &root_id)
     }
@@ -43,18 +45,21 @@ impl CargoCapture {
                 }
             } else {
                 // 普通の行
-                let mut moduled_closed = false;
-                if let Some((_, mut cnt)) = st_mod.back() {
+                if let Some((_, cnt)) = st_mod.back_mut() {
                     for c in line.chars() {
-                        if c == '{' { cnt += 1; }
-                        if c == '}' { cnt -= 1; }
-                        if cnt == 0 {
-                            curr_node_id = tree.get(&curr_node_id).unwrap().parent().unwrap().clone();
-                            st_mod.pop_back();
-                            moduled_closed = true;
-                        } else if cnt < 0 {
-                            return Err(Box::new(CapError::CapError(format!("Inconsistent braces (line {})", i))));
-                        }
+                        if c == '{' { *cnt += 1; }
+                        if c == '}' { *cnt -= 1; }
+                    }
+                }
+
+                let mut moduled_closed = false;
+                if let Some(&(_, cnt)) = st_mod.back() {
+                    if cnt == 0 {
+                        curr_node_id = tree.get(&curr_node_id).unwrap().parent().unwrap().clone();
+                        st_mod.pop_back();
+                        moduled_closed = true;
+                    } else if cnt < 0 {
+                        return Err(Box::new(CapError::CapError(format!("Inconsistent braces (line {})", i))));
                     }
                 }
 
@@ -95,6 +100,15 @@ impl CargoCapture {
             } else {
                 parent = tree.insert_under(Token::Module(format!("pub mod {} {{", m), m.to_owned()), &parent)?;
             }
+        }
+
+        if !tree.get(&parent).unwrap().children().is_empty() {
+            // 重複して展開されないように、対象モジュールが既に存在する場合は一度削除して再度展開する.
+            let d = tree.get(&parent).unwrap().data().clone();
+            let n = tree.insert_under(d, &tree.root_node_id().unwrap().clone())?;
+            tree.swap_nodes(&parent, &n, SwapBehavior::TakeChildren)?;
+            tree.remove_node(parent, RemoveBehavior::DropChildren)?;
+            parent = n;
         }
 
         let path = self.module_project.join("src").join(module.replace("::", "/") + ".rs");
@@ -183,6 +197,7 @@ trait TreeTrait<T> {
     fn find_parent_module(&self, module: &str) -> NodeId;
     fn lookup_module_under(&self, module: &str, parent: &NodeId) -> Option<NodeId>;
     fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError>;
+    fn to_debug_string(&self) -> Result<String, Box<dyn Error>>;
 }
 
 impl TreeTrait<Token> for Tree<Token> {
@@ -212,6 +227,12 @@ impl TreeTrait<Token> for Tree<Token> {
 
     fn insert_under(&mut self, t: Token, parent: &NodeId) -> Result<NodeId, NodeIdError> {
         self.insert(Node::new(t), InsertBehavior::UnderNode(parent))
+    }
+
+    fn to_debug_string(&self) -> Result<String, Box<dyn Error>> {
+        let mut s = String::new();
+        self.write_formatted(&mut s)?;
+        Ok(s)
     }
 }
 
@@ -259,6 +280,7 @@ fn hello2() -> String { "Hello".to_string() }
     fn test_capture_in_module_file() {
         let content =
 r#"aaa
+// CAP(capture::test::mod3)
 // CAP(capture::test::mod3)
 bbb
 "#.to_string();

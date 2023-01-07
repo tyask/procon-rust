@@ -3,6 +3,8 @@
 use crate::common::Unit;
 use super::modint::{Modint, Modules};
 
+// CAP(ex::modint)
+
 struct Combination<M> { facts: Vec<Modint<M>>, ifacts: Vec<Modint<M>> }
 
 impl<M: Modules> Combination<M> {

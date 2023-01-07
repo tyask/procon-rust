@@ -99,7 +99,7 @@ fn colorize_bipartite(g: &Vec<Vec<usize>>) -> Result<Vec<isize>,()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ex::utils::*;
+    use super::*;
 
     #[test]
     fn test_primes() {
