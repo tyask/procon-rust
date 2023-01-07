@@ -14,7 +14,8 @@ pub type set<V>    = HashSet<V>;
 pub type bset<V>   = BTreeSet<V>;
 pub type bheap<V>  = BinaryHeap<V>;
 
-pub trait From<T> { fn from(t: T) -> Self; }
+pub trait FromT<T> { fn from_t(t: T) -> Self; }
+pub trait IntoT<T> { fn into_t(self) -> T; }
 pub trait Unit {
     const ZERO: Self;
     const ONE: Self;
@@ -54,19 +55,25 @@ pub trait ToChar { fn char(self) -> char; }
     ($($t:ty),*) => {$(
         impl SimplePrimInt for $t { }
         impl ExPrimInt     for $t { }
-        impl From<isize> for $t { fn from(n: isize) -> Self { n as $t } }
-        impl From<usize> for $t { fn from(n: usize) -> Self { n as $t } }
         impl Unit for $t {
             const ZERO: Self =  0 as Self;
             const ONE : Self =  1 as Self;
             const TWO : Self =  2 as Self;
             const TEN : Self = 10 as Self;
         }
-        impl ToUs   for $t { fn us(self)   -> us   { self as us } }
-        impl ToIs   for $t { fn is(self)   -> is   { self as is } }
-        impl ToF64  for $t { fn f64(self)  -> f64  { self as f64 } }
-        impl ToU8   for $t { fn u8(self)   -> u8   { self as u8 } }
-        impl ToChar for $t { fn char(self) -> char { (self as u8) as char } }
+        impl FromT<us>   for $t { fn from_t(n: us) -> Self { n as $t } }
+        impl FromT<is>   for $t { fn from_t(n: is) -> Self { n as $t } }
+        impl IntoT<us>   for $t { fn into_t(self)  -> us   { self as us } }
+        impl IntoT<is>   for $t { fn into_t(self)  -> is   { self as is } }
+        impl IntoT<f64>  for $t { fn into_t(self)  -> f64  { self as f64 } }
+        impl IntoT<u8>   for $t { fn into_t(self)  -> u8   { self as u8 } }
+        impl IntoT<char> for $t { fn into_t(self)  -> char { (self as u8) as char } }
+        impl IntoT<u64>  for $t { fn into_t(self)  -> u64  { self as u64 } }
+        impl ToUs        for $t { fn us(self)      -> us   { self as us } }
+        impl ToIs        for $t { fn is(self)      -> is   { self as is } }
+        impl ToF64       for $t { fn f64(self)     -> f64  { self as f64 } }
+        impl ToU8        for $t { fn u8(self)      -> u8   { self as u8 } }
+        impl ToChar      for $t { fn char(self)    -> char { (self as u8) as char } }
     )*}
 }
 
@@ -177,7 +184,7 @@ impl<N: SimplePrimInt> Pt<N> {
     pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
     pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
 }
-impl<N: SimplePrimInt+From<is>> Pt<N> {
+impl<N: SimplePrimInt+FromT<is>> Pt<N> {
     pub fn dir4() -> Vec<Pt<N>> {
         vec![Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0), Pt::from_is(-1,0)]
     }
@@ -187,9 +194,9 @@ impl<N: SimplePrimInt+From<is>> Pt<N> {
             Pt::from_is(1,1), Pt::from_is(1,-1), Pt::from_is(-1,1), Pt::from_is(-1,-1)
             ]
     }
-    pub fn from_is(x: is, y: is) -> Pt<N> { Self::of(N::from(x), N::from(y)) }
+    pub fn from_is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
 }
-impl<N: SimplePrimInt+From<is>+ToF64> Pt<N> {
+impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
     pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
 }
 impl Pt<f64> {
@@ -210,7 +217,7 @@ impl<N: SimplePrimInt> Mul<N>           for Pt<N> { type Output = Pt<N>; fn mul(
 impl<N: SimplePrimInt> Div<N>           for Pt<N> { type Output = Pt<N>; fn div(mut self, rhs: N) -> Self::Output { self /= rhs; self } }
 impl<N: SimplePrimInt+Default> Sum      for Pt<N> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::default(), |a, b| a + b) } }
 
-impl<N: SimplePrimInt+From<is>+proconio::source::Readable<Output=N>> proconio::source::Readable for Pt<N> {
+impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>> proconio::source::Readable for Pt<N> {
     type Output = Pt<N>;
     fn read<R: io::BufRead, S: proconio::source::Source<R>>(source: &mut S) -> Self::Output {
         Pt::of(N::read(source), N::read(source))
@@ -256,11 +263,9 @@ impl<T, N: SimplePrimInt+ToUs> IndexMut<(N,N)> for Grid<T> {
 
 // io
 
-/// インタラクティブ問題ではこれをinputに渡す
-/// ```
-/// let src = from_stdin();
-/// input! {from src, n: usize}
-/// ```
+// インタラクティブ問題ではこれをinputに渡す
+// let src = from_stdin();
+// input! {from src, n: usize}
 pub fn from_stdin() -> proconio::source::line::LineSource<io::BufReader<io::Stdin>> {
     proconio::source::line::LineSource::new(io::BufReader::new(io::stdin()))
 }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-
 use std::ops::{RangeBounds, Bound};
+use crate::common::IntoT;
 
 const MASK30      : u64 = (1 << 30) - 1;
 const MASK31      : u64 = (1 << 31) - 1;
@@ -9,6 +9,8 @@ const MOD         : u64 = (1 << 61) - 1;
 const POSITIVIZER : u64 = MOD * 4;
 const BASE        : u64 = 1_000_000_009;
 
+impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
+
 pub struct RollingHash {
     hash: Vec<u64>,
     pos: Vec<u64>,
@@ -16,11 +18,11 @@ pub struct RollingHash {
 
 impl RollingHash {
 
-    pub fn new(s: &[char]) -> Self {
+    pub fn new<T: Copy+IntoT<u64>>(s: &[T]) -> Self {
         let mut hash = vec![0];
         let mut pos = vec![1];
         for (i, &x) in s.iter().enumerate() {
-            hash.push(mods(mul(hash[i], BASE) + x as u64));
+            hash.push(mods(mul(hash[i], BASE) + x.into_t()));
             pos.push(mods(mul(pos[i], BASE)));
         }
         Self { hash, pos }

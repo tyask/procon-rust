@@ -14,9 +14,7 @@ impl CargoCapture {
         let mut tree = Tree::new();
         let root_id = tree.insert(Node::new(Token::Root), InsertBehavior::AsRoot).unwrap();
         self.parse_to(r, &mut tree, &root_id).unwrap();
-        println!("{}", tree.to_debug_string()?);
         while let Some(_) = self.capture_one(&mut tree)? { }
-        println!("{}", tree.to_debug_string()?);
         self.compress_modules(&mut tree);
         self.to_string(&tree, &root_id)
     }
@@ -45,24 +43,24 @@ impl CargoCapture {
                 }
             } else {
                 // 普通の行
-                if let Some((_, cnt)) = st_mod.back_mut() {
-                    for c in line.chars() {
-                        if c == '{' { *cnt += 1; }
-                        if c == '}' { *cnt -= 1; }
-                    }
-                }
-
                 let mut moduled_closed = false;
-                if let Some(&(_, cnt)) = st_mod.back() {
-                    if cnt == 0 {
-                        curr_node_id = tree.get(&curr_node_id).unwrap().parent().unwrap().clone();
-                        st_mod.pop_back();
-                        moduled_closed = true;
-                    } else if cnt < 0 {
-                        return Err(Box::new(CapError::CapError(format!("Inconsistent braces (line {})", i))));
+                for c in line.chars() {
+                    if st_mod.is_empty() { break; }
+                    let d = if c == '{' { 1 } else if c == '}' { -1 } else { 0 };
+                    if d == 0 { continue; }
+                    if let Some((_, cnt)) = st_mod.back_mut() {
+                        *cnt += d;
+                        if *cnt == 0 {
+                            curr_node_id = tree.get(&curr_node_id).unwrap().parent().unwrap().clone();
+                            st_mod.pop_back();
+                            moduled_closed = true;
+                        } else if *cnt < 0 {
+                            return Err(Box::new(CapError::CapError(format!("Inconsistent braces (line {})", i))));
+                        }
                     }
                 }
 
+                // moduleをクローズしている行は消えるので注意.
                 if !moduled_closed {
                     tree.insert_under(Token::Src(line.to_owned()), &curr_node_id)?;
                 }

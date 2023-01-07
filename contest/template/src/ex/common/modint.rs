@@ -40,8 +40,8 @@ impl<M: Modules> Debug    for Modint<M> { fn fmt(&self, f: &mut Formatter<'_>) -
 impl<M: Modules> Readable for Modint<M> { type Output = Modint<M>; fn read<R: BufRead, S: Source<R>>(source: &mut S) -> Self::Output { Modint::new(usize::read(source)) } }
 impl<M: Modules> Sum      for Modint<M> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::ZERO, |a, b| a + b) } }
 
-impl<M: Modules> crate::common::From<isize> for Modint<M> { fn from(n: isize) -> Self { Self::new(n as usize) } }
-impl<M: Modules> crate::common::From<usize> for Modint<M> { fn from(n: usize) -> Self { Self::new(n) } }
+impl<M: Modules> crate::common::FromT<isize> for Modint<M> { fn from_t(n: isize) -> Self { Self::new(n as usize) } }
+impl<M: Modules> crate::common::FromT<usize> for Modint<M> { fn from_t(n: usize) -> Self { Self::new(n) } }
 impl<M: Modules> crate::common::Unit for Modint<M> {
     const ZERO: Self = Modint::new(0);
     const ONE:  Self = Modint::new(1);
