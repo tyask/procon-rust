@@ -15,41 +15,19 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Cargo equip",
-			"command": "python",
+			"label": "Cargo Capture",
+			"command": "cargo",
 			"args": [
-				"${workspaceFolder}/../../tools/cargo_equip.py",
+				"capture",
+				"--module",
+				"${workspaceFolder}/../template",
+				"--target",
 				"${file}",
-				"${workspaceFolderBasename}-${fileBasenameNoExtension}",
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
 			"problemMatcher": []
-		},
-		{
-			"label": "Cargo Test",
-			"command": "cargo",
-			"args": [
-				"test",
-			],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Cargo Run",
-			"command": "cargo",
-			"args": [
-				"run",
-				"--bin",
-				"${workspaceFolderBasename}-${fileBasenameNoExtension}",
-			],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"problemMatcher": []
-		},
+		}
 	]
 }
