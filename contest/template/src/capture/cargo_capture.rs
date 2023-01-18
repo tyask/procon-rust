@@ -38,7 +38,7 @@ impl CargoCapture {
                 for cap in re_mod.captures_iter(&line) {
                     let module = cap["MOD"].to_owned();
                     curr_node_id = tree.insert_under(
-                        Token::Module(cap["TOKEN"].to_owned(), module.to_owned()), &curr_node_id)?;
+                        Token::Module(cap["TOKEN"].trim().to_owned(), module.to_owned()), &curr_node_id)?;
                     st_mod.push_back((module.to_owned(), 1));
                 }
             } else {

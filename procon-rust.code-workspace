@@ -9,33 +9,28 @@
 			"path": "contest/template"
 		},
 		{
-			"name": "abc236",
-			"path": "contest/abc236"
+			"path": "contest/abc228"
 		},
 		{
-			"name": "abc235",
-			"path": "contest/abc235"
+			"path": "contest/abc227"
 		},
 		{
-			"path": "contest/abc234"
+			"path": "contest/abc226"
 		},
 		{
-			"path": "contest/abc233"
+			"path": "contest/abc225"
 		},
 		{
-			"path": "contest/abc232"
+			"path": "contest/abc224"
 		},
 		{
-			"path": "contest/abc231"
+			"path": "contest/abc223"
 		},
 		{
-			"path": "contest/abc230"
+			"path": "contest/abc222"
 		},
 		{
-			"path": "contest/abc229"
-		},
-		{
-			"path": "contest/abc284"
+			"path": "contest/abc285"
 		}
 	],
 	"settings": {}

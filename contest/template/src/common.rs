@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports, unused_macros, non_snake_case, non_camel_case_types)]
 use std::{*, ops::*, collections::*, iter::Sum};
+use itertools::Itertools;
 
 pub type us        = usize;
 pub type is        = isize;
@@ -16,12 +17,6 @@ pub type bheap<V>  = BinaryHeap<V>;
 
 pub trait FromT<T> { fn from_t(t: T) -> Self; }
 pub trait IntoT<T> { fn into_t(self) -> T; }
-pub trait Unit {
-    const ZERO: Self;
-    const ONE: Self;
-    const TWO: Self;
-    const TEN: Self;
-}
 
 // PrimNum
 pub trait SimplePrimInt:
@@ -42,25 +37,13 @@ pub trait SimplePrimInt:
 pub trait ExPrimInt: SimplePrimInt
         + Rem<Output=Self>
         + RemAssign
-        + Unit
+        + FromT<us>
 {}
-
-pub trait ToUs   { fn us(self) -> us; }
-pub trait ToIs   { fn is(self) -> is; }
-pub trait ToF64  { fn f64(self) -> f64; }
-pub trait ToU8   { fn u8(self) -> u8; }
-pub trait ToChar { fn char(self) -> char; }
 
 #[macro_export] macro_rules! impl_prim_num {
     ($($t:ty),*) => {$(
         impl SimplePrimInt for $t { }
         impl ExPrimInt     for $t { }
-        impl Unit for $t {
-            const ZERO: Self =  0 as Self;
-            const ONE : Self =  1 as Self;
-            const TWO : Self =  2 as Self;
-            const TEN : Self = 10 as Self;
-        }
         impl FromT<us>   for $t { fn from_t(n: us) -> Self { n as $t } }
         impl FromT<is>   for $t { fn from_t(n: is) -> Self { n as $t } }
         impl IntoT<us>   for $t { fn into_t(self)  -> us   { self as us } }
@@ -69,59 +52,78 @@ pub trait ToChar { fn char(self) -> char; }
         impl IntoT<u8>   for $t { fn into_t(self)  -> u8   { self as u8 } }
         impl IntoT<char> for $t { fn into_t(self)  -> char { (self as u8) as char } }
         impl IntoT<u64>  for $t { fn into_t(self)  -> u64  { self as u64 } }
-        impl ToUs        for $t { fn us(self)      -> us   { self as us } }
-        impl ToIs        for $t { fn is(self)      -> is   { self as is } }
-        impl ToF64       for $t { fn f64(self)     -> f64  { self as f64 } }
-        impl ToU8        for $t { fn u8(self)      -> u8   { self as u8 } }
-        impl ToChar      for $t { fn char(self)    -> char { (self as u8) as char } }
     )*}
 }
-
 impl_prim_num! {isize, i8, i32, i64, usize, u8, u32, u64, f32, f64}
 
+pub trait ToUs   { fn us(self) -> us; }
+pub trait ToIs   { fn is(self) -> is; }
+pub trait ToF64  { fn f64(self) -> f64; }
+pub trait ToU8   { fn u8(self) -> u8; }
+pub trait ToChar { fn char(self) -> char; }
+
+impl<T: IntoT<us>>   ToUs   for T { fn us(self)   -> us   { self.into_t() } }
+impl<T: IntoT<is>>   ToIs   for T { fn is(self)   -> is   { self.into_t() } }
+impl<T: IntoT<f64>>  ToF64  for T { fn f64(self)  -> f64  { self.into_t() } }
+impl<T: IntoT<u8>>   ToU8   for T { fn u8(self)   -> u8   { self.into_t() } }
+impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
+impl IntoT<us>  for char { fn into_t(self) -> us  { self as us } }
+impl IntoT<is>  for char { fn into_t(self) -> is  { self as is } }
+impl IntoT<u8>  for char { fn into_t(self) -> u8  { self as u8 } }
+impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
+impl IntoT<i64> for char { fn into_t(self) -> i64 { self as i64 } }
+
 // Utilities
-#[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
-struct Rec<'s, P, R=()> { f: &'s dyn Fn(&Self, P) -> R }
-impl<'s, P, R> Rec<'s, P, R> {
-    pub fn new(f: &'s dyn Fn(&Self, P) -> R) -> Self { Self { f: f } }
-    pub fn call(&self, p: P) -> R { (self.f)(self, p) }
+pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
+    // 再帰が深いなどスタックサイズが足りない場合はこのメソッドを利用する.
+    std::thread::Builder::new()
+        .stack_size(1024*1024*1024)
+        .spawn(f)
+        .unwrap()
+        .join().unwrap();
 }
+#[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
 pub fn chmax<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Greater) }
 pub fn chmin<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Less) }
 fn chif<N:Clone+PartialOrd>(value: &N, target: &mut N, cond: std::cmp::Ordering) -> bool {
     if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
 }
 
-pub fn abs_diff<N: SimplePrimInt>    (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-pub fn gcd<N:    ExPrimInt>          (mut a: N, mut b: N) -> N { while b > N::ZERO { let c = b; b = a % b; a = c; } a }
-pub fn lcm<N:    ExPrimInt>          (a: N, b: N)         -> N { if a==N::ZERO || b==N::ZERO { N::ZERO } else { a / gcd(a,b) * b }}
-pub fn floor<N:  SimplePrimInt>      (a: N, b: N)         -> N { a / b }
-pub fn ceil<N:   SimplePrimInt+Unit> (a: N, b: N)         -> N { (a + b - N::ONE) / b }
-pub fn modulo<N: ExPrimInt>          (n: N, m: N)         -> N { let r = n % m; or!(r < N::ZERO; r + m, r) }
-pub fn powmod<N: ExPrimInt+Unit+BitAnd<Output=N>+Shr<Output=N>>     (mut n: N, mut k: N, m: N) -> N {
+pub fn abs_diff<N: SimplePrimInt>           (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
+pub fn gcd     <N: ExPrimInt>               (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
+pub fn lcm     <N: ExPrimInt>               (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
+pub fn floor   <N: SimplePrimInt>           (a: N, b: N)         -> N { a / b }
+pub fn ceil    <N: SimplePrimInt+FromT<us>> (a: N, b: N)         -> N { (a + b - N::from_t(1)) / b }
+pub fn modulo  <N: ExPrimInt>               (n: N, m: N)         -> N { let r = n % m; or!(r < N::from_t(0); r + m, r) }
+pub fn powmod  <N: ExPrimInt+FromT<us>+BitAnd<Output=N>+Shr<Output=N>>(mut n: N, mut k: N, m: N) -> N {
     // n^k mod m
-    let one = N::ONE;
+    let one = N::from_t(1);
     let mut a = one;
-    while k > N::ZERO {
+    while k > N::from_t(0) {
         if k & one == one { a *= n; a %= m; }
         n %= m; n *= n; n %= m;
         k = k >> one;
     }
     a
 }
-pub fn sumae<N: SimplePrimInt+Unit>(n: N, a: N, e: N) -> N { n * (a + e) / N::TWO }
-pub fn sumad<N: SimplePrimInt+Unit>(n: N, a: N, d: N) -> N { n * (N::TWO * a + (n - N::ONE) * d) / N::TWO }
-pub fn ndigits<N: SimplePrimInt+Unit>(mut n: N) -> usize { let mut d = 0; while n > N::ZERO { d+=1; n/=N::TEN; } d }
-pub fn asc<T:Ord>(a: &T, b: &T)  -> cmp::Ordering { a.cmp(b) }
+pub fn sumae  <N: SimplePrimInt+FromT<us>>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_t(2) }
+pub fn sumad  <N: SimplePrimInt+FromT<us>>(n: N, a: N, d: N) -> N { n * (N::from_t(2) * a + (n - N::from_t(1)) * d) / N::from_t(2) }
+pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> usize { let mut d = 0; while n > N::from_t(0) { d+=1; n/=N::from_t(10); } d }
+pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 
-pub trait IterTrait : Iterator where Self::Item: hash::Hash+Eq {
-    fn counts<N: SimplePrimInt+Unit>(&mut self) -> map<Self::Item, N> {
-        self.fold(map::<Self::Item, N>::new(), |mut m: map<Self::Item,N>, x| { *m.or_def_mut(x) += N::ONE; m })
+pub trait IterTrait : Iterator {
+    fn counts<N: SimplePrimInt+FromT<us>>(&mut self) -> map<Self::Item, N> where Self::Item: hash::Hash+Eq {
+        self.fold(map::<_,_>::new(), |mut m, x| { *m.or_def_mut(x) += N::from_t(1); m })
+    }
+    fn grouping_to_bmap<'a,K:Ord>(&'a mut self, get_key: &dyn Fn(&Self::Item)->K) -> bmap<K, Vec<Self::Item>> {
+        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(x); m })
+    }
+    fn grouping_to_map<K:Eq+hash::Hash>(&mut self, get_key: &dyn Fn(&Self::Item)->K) -> map<K, Vec<Self::Item>> {
+        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(x); m })
     }
 }
-
-impl<T: ?Sized> IterTrait for T where T: Iterator, Self::Item: hash::Hash+Eq { }
+impl<T> IterTrait for T where T: Iterator { }
 
 // Vec
 pub trait VecFill<T>  { fn fill(&mut self, t: T); }
@@ -156,6 +158,14 @@ impl<K:Ord, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
 impl<K:Ord, V> MapOr<K, V> for bmap<K, V> {
     fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
 }
+pub trait BMapTrait<K,V> {
+    fn lower_bound(&self, k: &K) -> Option<(&K, &V)>;
+    fn upper_bound(&self, k: &K) -> Option<(&K, &V)>;
+}
+impl<K:Ord, V> BMapTrait<K, V> for bmap<K, V> {
+    fn lower_bound(&self, k: &K) -> Option<(&K, &V)> { self.range(k..).next() }
+    fn upper_bound(&self, k: &K) -> Option<(&K, &V)> { self.range((Bound::Excluded(k), Bound::Unbounded)).next() }
+}
 
 pub trait BSetTrait<T> {
     fn lower_bound(&self, t: &T) -> Option<&T>;
@@ -167,10 +177,11 @@ impl<T:Ord> BSetTrait<T> for bset<T> {
 }
 
 // Graph
-pub fn digraph(n: us, uv: &Vec<(usize, usize)>) -> Vec<Vec<us>> {
+pub type Graph = Vec<Vec<us>>;
+pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Graph {
     let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|g[u].push(v)); g
 }
-pub fn undigraph(n: us, uv: &Vec<(usize, usize)>) -> Vec<Vec<us>> {
+pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Graph {
     let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);}); g
 }
 
@@ -261,6 +272,44 @@ impl<T, N: SimplePrimInt+ToUs> IndexMut<(N,N)> for Grid<T> {
     fn index_mut(&mut self, p: (N,N)) -> &mut Self::Output { &mut self.raw[p.0.us()][p.1.us()] }
 }
 
+trait Identify {
+    type Ident;
+    fn ident(&self) -> Self::Ident;
+    fn ident_by(&self, s: &str) -> Self::Ident;
+}
+
+impl<T: IntoT<u8> + Copy> Identify for T {
+    type Ident = us;
+
+    fn ident(&self) -> us {
+        let c = self.into_t();
+        if b'0' <= c && c <= b'9' { (c - b'0').us() }
+        else if b'a' <= c && c <= b'z' { (c - b'a').us() }
+        else if b'A' <= c && c <= b'Z' { (c - b'A').us() }
+        else { 0 }
+    }
+
+    fn ident_by(&self, s: &str) -> us {
+        let b = self.into_t();
+        s.chars().position(|c|c==b.char()).expect("error")
+    }
+}
+impl<T: Identify> Identify for [T] {
+    type Ident = Vec<T::Ident>;
+    fn ident(&self) -> Self::Ident { self.iter().map(|x|x.ident()).collect_vec() }
+    fn ident_by(&self, s: &str) -> Self::Ident { self.iter().map(|x|x.ident_by(s)).collect_vec() }
+}
+impl Identify for &str {
+    type Ident = Vec<us>;
+    fn ident(&self) -> Self::Ident { self.as_bytes().ident() }
+    fn ident_by(&self, s: &str) -> Self::Ident { self.as_bytes().ident_by(s) }
+}
+impl Identify for String {
+    type Ident = Vec<us>;
+    fn ident(&self) -> Self::Ident { self.as_bytes().ident() }
+    fn ident_by(&self, s: &str) -> Self::Ident { self.as_bytes().ident_by(s) }
+}
+
 // io
 
 // インタラクティブ問題ではこれをinputに渡す
@@ -311,6 +360,7 @@ pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
 pub fn no(b: bool) -> &'static str { yes(!b) }
 pub fn No(b: bool) -> &'static str { Yes(!b) }
 pub fn NO(b: bool) -> &'static str { YES(!b) }
+
 
 // CAP(IGNORE_BELOW)
 #[cfg(test)]

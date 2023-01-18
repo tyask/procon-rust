@@ -9,7 +9,6 @@ const MOD         : u64 = (1 << 61) - 1;
 const POSITIVIZER : u64 = MOD * 4;
 const BASE        : u64 = 1_000_000_009;
 
-impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
 
 pub struct RollingHash {
     hash: Vec<u64>,
