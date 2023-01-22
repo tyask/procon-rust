@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 use std::collections::VecDeque;
-
 use crate::common::*;
 
-fn topological_sort(g: &Graph) -> Vec<us> {
+pub fn topological_sort(g: &Graph) -> Option<Vec<us>> {
     let n = g.len();
 
     let mut deg = vec![0; n];
@@ -18,5 +17,5 @@ fn topological_sort(g: &Graph) -> Vec<us> {
         for &u in &g[v] { deg[u]-=1; if deg[u]==0 { que.push_back(u); }}
     }
 
-    ret
+    if ret.len() == n { Some(ret) } else { None }
 }

@@ -9,28 +9,19 @@
 			"path": "contest/template"
 		},
 		{
-			"path": "contest/abc228"
+			"path": "contest/abc218"
 		},
 		{
-			"path": "contest/abc227"
+			"path": "contest/abc286"
 		},
 		{
-			"path": "contest/abc226"
+			"path": "contest/arc153"
 		},
 		{
-			"path": "contest/abc225"
+			"path": "contest/abc217"
 		},
 		{
-			"path": "contest/abc224"
-		},
-		{
-			"path": "contest/abc223"
-		},
-		{
-			"path": "contest/abc222"
-		},
-		{
-			"path": "contest/abc285"
+			"path": "contest/abc216"
 		}
 	],
 	"settings": {}

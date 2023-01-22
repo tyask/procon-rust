@@ -4,8 +4,8 @@ use crate::ex::common::unionfind::*;
 
 // CAP(ex::common::unionfind)
 
-#[derive(Clone,Copy)]
-pub struct Edge { u: usize, v: usize, cost: isize }
+#[derive(Clone,Copy,PartialEq,Eq,Hash)]
+pub struct Edge { pub u: usize, pub v: usize, pub cost: isize }
 impl Edge { pub fn new(u: usize, v: usize, cost: isize) -> Edge { Edge{u:u, v:v, cost:cost} } }
 
 pub struct Kraskal { n: usize, edges: Vec<Edge> }

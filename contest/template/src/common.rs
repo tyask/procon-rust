@@ -272,7 +272,7 @@ impl<T, N: SimplePrimInt+ToUs> IndexMut<(N,N)> for Grid<T> {
     fn index_mut(&mut self, p: (N,N)) -> &mut Self::Output { &mut self.raw[p.0.us()][p.1.us()] }
 }
 
-trait Identify {
+pub trait Identify {
     type Ident;
     fn ident(&self) -> Self::Ident;
     fn ident_by(&self, s: &str) -> Self::Ident;
@@ -330,7 +330,7 @@ fmt_primitive! {
     usize, isize, f32, f64, char, &str, String, bool
 }
 
-impl<T: Fmt> Fmt for Vec<T>      { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
+impl<T: Fmt> Fmt for [T]         { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 
 #[macro_export] macro_rules! fmt {
