@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{ops::*, marker::PhantomData, io::BufRead, fmt::{Display, Formatter, Debug}, iter::Sum};
 use proconio::source::{Readable, Source};
-use crate::common::FromT;
+use crate::common::*;
 
 pub type Modint1000000007 = Modint<Modules1000000007>;
 pub type Modint998244353  = Modint<Modules998244353>;
@@ -38,9 +38,8 @@ impl<M: Modules> Debug    for Modint<M> { fn fmt(&self, f: &mut Formatter<'_>) -
 impl<M: Modules> Readable for Modint<M> { type Output = Modint<M>; fn read<R: BufRead, S: Source<R>>(source: &mut S) -> Self::Output { Modint::new(usize::read(source)) } }
 impl<M: Modules> Sum      for Modint<M> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::from_t(0), |a, b| a + b) } }
 
-impl<M: Modules> FromT<isize> for Modint<M> { fn from_t(n: isize) -> Self { Self::new(n as usize) } }
-impl<M: Modules> FromT<usize> for Modint<M> { fn from_t(n: usize) -> Self { Self::new(n) } }
-impl<M: Modules> FromT<i32>   for Modint<M> { fn from_t(n: i32)   -> Self { Self::new(n as usize) } }
+impl<M: Modules, N: IntoT<usize>> FromT<N> for Modint<M> { fn from_t(n: N) -> Self { Self::new(n.into_t()) } }
+impl<M: Modules, N: IntoT<usize>> From<N>  for Modint<M> { fn from(n: N)   -> Self { Self::new(n.into_t()) } }
 
 impl<M: Modules> AddAssign for Modint<M> { fn add_assign(&mut self, rhs: Self) { self.val += rhs.val; self.normalize(); } }
 impl<M: Modules> SubAssign for Modint<M> { fn sub_assign(&mut self, rhs: Self) { self.val += Self::MOD-rhs.val; self.normalize(); } }

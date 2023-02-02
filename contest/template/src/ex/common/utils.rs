@@ -50,8 +50,9 @@ pub fn prime_fact(mut n: usize) -> std::collections::BTreeMap<usize, usize> {
 // 座標圧縮
 pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<usize> {
     use superslice::Ext;
-    let mut t = v.to_vec(); t.sort(); t.dedup();
-    v.iter().map(|x| t.lower_bound(x)).collect::<Vec<_>>()
+    use itertools::Itertools;
+    let t = v.iter().cloned().sorted().dedup().collect_vec();
+    v.iter().map(|x|t.lower_bound(x)).collect_vec()
 }
 
 // ランレングス圧縮

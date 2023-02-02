@@ -10,7 +10,7 @@
 				"${fileBasenameNoExtension}",
 			],
 			"options": {
-				"cwd": "${workspaceFolder}"
+				"cwd": "${fileDirname}/../.."
 			},
 			"problemMatcher": []
 		},
@@ -20,12 +20,12 @@
 			"args": [
 				"capture",
 				"--module",
-				"${workspaceFolder}/../template",
+				"${workspaceFolder}/contest/template",
 				"--target",
 				"${file}",
 			],
 			"options": {
-				"cwd": "${workspaceFolder}"
+				"cwd": "${fileDirname}/../.."
 			},
 			"problemMatcher": []
 		}

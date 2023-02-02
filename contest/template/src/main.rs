@@ -3,7 +3,9 @@ use std::{*, collections::*, ops::*, cmp::*};
 use proconio::{input, fastout};
 use common::*;
 
-fn main() { solve(); }
+fn main() {
+    solve();
+}
 
 #[fastout]
 fn solve() {

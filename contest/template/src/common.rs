@@ -14,6 +14,7 @@ pub type bmap<K,V> = BTreeMap<K,V>;
 pub type set<V>    = HashSet<V>;
 pub type bset<V>   = BTreeSet<V>;
 pub type bheap<V>  = BinaryHeap<V>;
+pub type deque<V>  = VecDeque<V>;
 
 pub trait FromT<T> { fn from_t(t: T) -> Self; }
 pub trait IntoT<T> { fn into_t(self) -> T; }
@@ -73,6 +74,10 @@ impl IntoT<u8>  for char { fn into_t(self) -> u8  { self as u8 } }
 impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
 impl IntoT<i64> for char { fn into_t(self) -> i64 { self as i64 } }
 
+pub trait Inf { const INF: Self; }
+impl Inf for us { const INF: Self = std::usize::MAX / 4; }
+impl Inf for is { const INF: Self = std::isize::MAX / 4; }
+
 // Utilities
 pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
     // 再帰が深いなどスタックサイズが足りない場合はこのメソッドを利用する.
@@ -82,12 +87,15 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
         .unwrap()
         .join().unwrap();
 }
+
 #[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
-pub fn chmax<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Greater) }
-pub fn chmin<N: Clone+PartialOrd>(value: &N, target: &mut N) -> bool { chif(value, target, cmp::Ordering::Less) }
-fn chif<N:Clone+PartialOrd>(value: &N, target: &mut N, cond: std::cmp::Ordering) -> bool {
-    if value.partial_cmp(target) == Some(cond) { *target = value.clone(); true } else { false }
-}
+#[macro_export] macro_rules! chmax { ($a:expr,$b:expr) => { if $a < $b { $a = $b; true } else { false } } }
+#[macro_export] macro_rules! chmin { ($a:expr,$b:expr) => { if $a > $b { $a = $b; true } else { false } } }
+#[macro_export] macro_rules! add_assign { ($a:expr,$b:expr) => { let v = $b; $a += v; } }
+#[macro_export] macro_rules! sub_assign { ($a:expr,$b:expr) => { let v = $b; $a -= v; } }
+#[macro_export] macro_rules! mul_assign { ($a:expr,$b:expr) => { let v = $b; $a *= v; } }
+#[macro_export] macro_rules! div_assign { ($a:expr,$b:expr) => { let v = $b; $a /= v; } }
+#[macro_export] macro_rules! rem_assign { ($a:expr,$b:expr) => { let v = $b; $a %= v; } }
 
 pub fn abs_diff<N: SimplePrimInt>           (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
 pub fn gcd     <N: ExPrimInt>               (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
@@ -122,8 +130,18 @@ pub trait IterTrait : Iterator {
     fn grouping_to_map<K:Eq+hash::Hash>(&mut self, get_key: &dyn Fn(&Self::Item)->K) -> map<K, Vec<Self::Item>> {
         self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(x); m })
     }
+    fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 }
-impl<T> IterTrait for T where T: Iterator { }
+pub trait CharIterTrait : Iterator<Item=char> {
+    fn cstr(&mut self) -> String { self.collect::<Str>() }
+}
+pub trait HashableIterTrait : Iterator where Self::Item: Eq+hash::Hash {
+    fn cset(&mut self) -> set<Self::Item> { self.collect::<set<_>>() }
+}
+
+impl<T> IterTrait         for T where T: Iterator { }
+impl<T> CharIterTrait     for T where T: Iterator<Item=char> { }
+impl<T> HashableIterTrait for T where T: Iterator, Self::Item: Eq+hash::Hash { }
 
 // Vec
 pub trait VecFill<T>  { fn fill(&mut self, t: T); }
@@ -190,6 +208,7 @@ pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Graph {
 pub struct Pt<N> { pub x: N, pub y: N }
 
 impl<N: SimplePrimInt> Pt<N> {
+    pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Pt<N> { Pt{x:x.into_t(), y:y.into_t()} }
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn tuple(self) -> (N, N) { (self.x, self.y) }
     pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
@@ -197,15 +216,15 @@ impl<N: SimplePrimInt> Pt<N> {
 }
 impl<N: SimplePrimInt+FromT<is>> Pt<N> {
     pub fn dir4() -> Vec<Pt<N>> {
-        vec![Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0), Pt::from_is(-1,0)]
+        vec![Pt::is(0,1), Pt::is(0,-1), Pt::is(1,0), Pt::is(-1,0)]
     }
     pub fn dir8() -> Vec<Pt<N>> {
         vec![
-            Pt::from_is(0,1), Pt::from_is(0,-1), Pt::from_is(1,0),  Pt::from_is(-1,0),
-            Pt::from_is(1,1), Pt::from_is(1,-1), Pt::from_is(-1,1), Pt::from_is(-1,-1)
+            Pt::is(0,1), Pt::is(0,-1), Pt::is(1, 0), Pt::is(-1, 0),
+            Pt::is(1,1), Pt::is(1,-1), Pt::is(-1,1), Pt::is(-1,-1)
             ]
     }
-    pub fn from_is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
+    fn is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
 }
 impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
     pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
@@ -213,7 +232,7 @@ impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
 impl Pt<f64> {
     pub fn rot(self, r: f64) -> Pt<f64> {
         let (x, y) = (self.x, self.y);
-        Self::of(r.cos()*x-r.sin()*y, r.sin()*x+r.cos()*y) // 反時計回りにr度回転(rはradian)
+        Self::new(r.cos()*x-r.sin()*y, r.sin()*x+r.cos()*y) // 反時計回りにr度回転(rはradian)
     }
 }
 impl<N: SimplePrimInt+fmt::Display> fmt::Display  for Pt<N> { fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{} {}", self.x, self.y) } }
@@ -228,10 +247,10 @@ impl<N: SimplePrimInt> Mul<N>           for Pt<N> { type Output = Pt<N>; fn mul(
 impl<N: SimplePrimInt> Div<N>           for Pt<N> { type Output = Pt<N>; fn div(mut self, rhs: N) -> Self::Output { self /= rhs; self } }
 impl<N: SimplePrimInt+Default> Sum      for Pt<N> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::default(), |a, b| a + b) } }
 
-impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>> proconio::source::Readable for Pt<N> {
+impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> proconio::source::Readable for Pt<N> {
     type Output = Pt<N>;
     fn read<R: io::BufRead, S: proconio::source::Source<R>>(source: &mut S) -> Self::Output {
-        Pt::of(N::read(source), N::read(source))
+        Pt::new(N::read(source), N::read(source))
     }
 }
 
@@ -348,10 +367,14 @@ impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e|
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
-    ($($a:expr),*) => { eprintln!("{}", fmt!(@debug $($a),*)); }
+    ($($a:expr),*)    => { eprintln!("{}", fmt!(@debug  $($a),*)); };
+    (@byline $a:expr) => { eprintln!("{}", fmt!(@byline $a)); };
+    (@grid   $a:expr) => { eprintln!("{}", fmt!(@grid   $a)); };
 }
 #[macro_export]#[cfg(not(feature="local"))] macro_rules! debug {
-    ($($a:expr),*) => { }
+    ($($a:expr),*)    => { };
+    (@byline $a:expr) => { };
+    (@grid   $a:expr) => { };
 }
 
 pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
@@ -389,24 +412,24 @@ mod tests {
         {
             let mut m = 0;
             let mut do_chmax = |v, exp_updated, exp_val| {
-                assert_eq!(chmax(v, &mut m), exp_updated);
+                assert_eq!(chmax!(m, v), exp_updated);
                 assert_eq!(m, exp_val);
             };
-            do_chmax(&1, true,  1);
-            do_chmax(&1, false, 1);
-            do_chmax(&0, false, 1);
+            do_chmax(1, true,  1);
+            do_chmax(1, false, 1);
+            do_chmax(0, false, 1);
         }
 
         {
             let mut m = 1;
             let mut do_chmin = |v, exp_updated, exp_val| {
-                assert_eq!(chmin(v, &mut m), exp_updated);
+                assert_eq!(chmin!(m, v), exp_updated);
                 assert_eq!(m, exp_val);
             };
 
-            do_chmin(&0, true,  0);
-            do_chmin(&0, false, 0);
-            do_chmin(&1, false, 0);
+            do_chmin(0, true,  0);
+            do_chmin(0, false, 0);
+            do_chmin(1, false, 0);
         }
     }
 }

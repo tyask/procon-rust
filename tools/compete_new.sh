@@ -10,7 +10,6 @@ find $PACKAGE -name '*.rs' | while read SRC; do
     cat $TEMPLATE/src/main.rs > $SRC;
     cargo capture --module $TEMPLATE --target $SRC
 done
-cp -r $TEMPLATE/.vscode $PACKAGE
 
 echo '''
 [features]
