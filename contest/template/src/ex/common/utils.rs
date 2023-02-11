@@ -1,7 +1,10 @@
 #![allow(dead_code)]
+use itertools::iproduct;
+
+use crate::common::*;
 
 // 素数判定
-pub fn is_price(n: usize) -> bool {
+pub fn is_price(n: us) -> bool {
     if n <= 1 { return false; }
     let mut i = 2;
     while i * i <= n { if n % i == 0 { return false; } i += 1; }
@@ -9,7 +12,7 @@ pub fn is_price(n: usize) -> bool {
 }
 
 // 約数を列挙する
-pub fn divisors(n: usize) -> Vec<usize> {
+pub fn divisors(n: us) -> Vec<us> {
     let mut a = Vec::new();
     let mut i = 1;
     while i * i <= n { if n % i == 0 { a.push(i); if i * i != n { a.push(n/i); } } i+=1; }
@@ -18,7 +21,7 @@ pub fn divisors(n: usize) -> Vec<usize> {
 }
 
 // 素数列挙
-pub fn primes(n: usize) -> Vec<usize> {
+pub fn primes(n: us) -> Vec<us> {
     if n <= 1 { return vec![]; }
 
     let mut sieve = vec![true; n+1];
@@ -33,8 +36,8 @@ pub fn primes(n: usize) -> Vec<usize> {
 }
 
 // 素因数分解する.
-pub fn prime_fact(mut n: usize) -> std::collections::BTreeMap<usize, usize> {
-    let mut m = std::collections::BTreeMap::new();
+pub fn prime_fact(mut n: us) -> bmap<us, us> {
+    let mut m = bmap::new();
     let mut d = 2;
     while d * d <= n {
         let mut e = 0;
@@ -48,7 +51,7 @@ pub fn prime_fact(mut n: usize) -> std::collections::BTreeMap<usize, usize> {
 }
 
 // 座標圧縮
-pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<usize> {
+pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<us> {
     use superslice::Ext;
     use itertools::Itertools;
     let t = v.iter().cloned().sorted().dedup().collect_vec();
@@ -56,7 +59,7 @@ pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<usize> {
 }
 
 // ランレングス圧縮
-pub fn runlength_encoding<T:PartialEq+Copy>(v: &Vec<T>) -> Vec<(T, usize)> {
+pub fn runlength_encoding<T:PartialEq+Copy>(v: &Vec<T>) -> Vec<(T, us)> {
     let mut a = Vec::new();
     for i in 0..v.len() {
         if i==0 || v[i-1]!=v[i] { a.push((v[i],0)) }
@@ -73,7 +76,7 @@ pub fn rot<T:Copy>(g: &Vec<Vec<T>>) -> Vec<Vec<T>> {
     a
 }
 
-pub fn to_base_n(mut x: usize, n: usize) {
+pub fn to_base_n(mut x: us, n: us) {
     let mut v = vec![];
     while x > 0 { v.push(x%n); x/=n; }
     v.reverse()
@@ -81,9 +84,9 @@ pub fn to_base_n(mut x: usize, n: usize) {
 
 // 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.
 // g: グラフを表す隣接リスト
-fn colorize_bipartite(g: &Vec<Vec<usize>>) -> Result<Vec<isize>,()> {
+fn colorize_bipartite(g: &Vec<Vec<us>>) -> Result<Vec<is>,()> {
     let mut col = vec![-1; g.len()];
-    fn dfs(g: &Vec<Vec<usize>>, col: &mut Vec<isize>, v: usize, c: isize) -> bool {
+    fn dfs(g: &Vec<Vec<us>>, col: &mut Vec<is>, v: us, c: is) -> bool {
         if col[v] >= 0 { return true; }
         col[v] = c;
         for &n in &g[v] {
@@ -94,6 +97,25 @@ fn colorize_bipartite(g: &Vec<Vec<usize>>) -> Result<Vec<isize>,()> {
 
     for v in 0..g.len() { if !dfs(&g, &mut col, v, 0) { return Err(()); } }
     Ok(col)
+}
+
+// パスカルの三角形によりnCkを計算. O(n^2)
+pub struct Combination { m: Vec<Vec<us>>, }
+impl Combination {
+    pub fn new(n: impl IntoT<us>) -> Self {
+        let n = n.into_t();
+        let mut m = vec![vec![0; n+1]; n+1];
+        m[0][0] = 1;
+        for i in 0..n { for j in 0..n {
+            m[i+1][j]   += m[i][j];
+            m[i+1][j+1] += m[i][j];
+        }}
+        Self { m }
+    }
+
+    pub fn nk<N: SimplePrimInt + IntoT<us> + FromT<us>>(&self, n: N, k: N) -> us {
+        if k < N::from_t(0) || k > n { 0 } else { self.m[n.into_t()][k.into_t()] }
+    }
 }
 
 // CAP(IGNORE_BELOW)

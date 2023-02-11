@@ -73,6 +73,8 @@ impl IntoT<is>  for char { fn into_t(self) -> is  { self as is } }
 impl IntoT<u8>  for char { fn into_t(self) -> u8  { self as u8 } }
 impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
 impl IntoT<i64> for char { fn into_t(self) -> i64 { self as i64 } }
+impl IntoT<char> for char  { fn into_t(self) -> char { self } }
+impl IntoT<char> for &char { fn into_t(self) -> char { *self } }
 
 pub trait Inf { const INF: Self; }
 impl Inf for us { const INF: Self = std::usize::MAX / 4; }
@@ -124,24 +126,28 @@ pub trait IterTrait : Iterator {
     fn counts<N: SimplePrimInt+FromT<us>>(&mut self) -> map<Self::Item, N> where Self::Item: hash::Hash+Eq {
         self.fold(map::<_,_>::new(), |mut m, x| { *m.or_def_mut(x) += N::from_t(1); m })
     }
-    fn grouping_to_bmap<'a,K:Ord>(&'a mut self, get_key: &dyn Fn(&Self::Item)->K) -> bmap<K, Vec<Self::Item>> {
-        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(x); m })
+    fn grouping_to_bmap<'a, K:Ord, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
+        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(get_val(&x)); m })
     }
-    fn grouping_to_map<K:Eq+hash::Hash>(&mut self, get_key: &dyn Fn(&Self::Item)->K) -> map<K, Vec<Self::Item>> {
-        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(x); m })
+    fn grouping_to_map<K:Eq+hash::Hash, V>(&mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> map<K, Vec<V>> {
+        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 }
-pub trait CharIterTrait : Iterator<Item=char> {
-    fn cstr(&mut self) -> String { self.collect::<Str>() }
+pub trait CharIterTrait<T: IntoT<char>> : Iterator<Item=T> {
+    fn cstr(&mut self) -> String { self.map(|c|c.into_t()).collect::<Str>() }
 }
-pub trait HashableIterTrait : Iterator where Self::Item: Eq+hash::Hash {
+pub trait HashIterTrait : Iterator where Self::Item: Eq+hash::Hash {
     fn cset(&mut self) -> set<Self::Item> { self.collect::<set<_>>() }
 }
+pub trait OrdIterTrait : Iterator where Self::Item: Ord {
+    fn cbset(&mut self) -> bset<Self::Item> { self.collect::<bset<_>>() }
+}
 
-impl<T> IterTrait         for T where T: Iterator { }
-impl<T> CharIterTrait     for T where T: Iterator<Item=char> { }
-impl<T> HashableIterTrait for T where T: Iterator, Self::Item: Eq+hash::Hash { }
+impl<T> IterTrait     for T where T: Iterator { }
+impl<T, U: IntoT<char>> CharIterTrait<U> for T where T: Iterator<Item=U> { }
+impl<T> HashIterTrait for T where T: Iterator, Self::Item: Eq+hash::Hash { }
+impl<T> OrdIterTrait  for T where T: Iterator, Self::Item: Ord { }
 
 // Vec
 pub trait VecFill<T>  { fn fill(&mut self, t: T); }
@@ -254,19 +260,6 @@ impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> p
     }
 }
 
-
-// CumSum
-pub struct CumSum<N> { pub s: Vec<N> }
-impl<N: SimplePrimInt> CumSum<N> {
-    pub fn new(v: &Vec<N>) -> Self {
-        let mut cs = CumSum{ s: Vec::new() };
-        cs.s.resize(v.len() + 1, Default::default());
-        for i in 0..v.len() { cs.s[i+1] = cs.s[i] + v[i]; }
-        cs
-    }
-    pub fn sum(&self, l: usize, r: usize) -> N { self.s[r] - self.s[l] }
-}
-
 // Grid
 pub struct Grid<T> { pub raw: Vec<Vec<T>> }
 impl<T: Clone> Grid<T> {
@@ -302,7 +295,7 @@ impl<T: IntoT<u8> + Copy> Identify for T {
 
     fn ident(&self) -> us {
         let c = self.into_t();
-        if b'0' <= c && c <= b'9' { (c - b'0').us() }
+        if b'0' <= c && c <= b'9'      { (c - b'0').us() }
         else if b'a' <= c && c <= b'z' { (c - b'a').us() }
         else if b'A' <= c && c <= b'Z' { (c - b'A').us() }
         else { 0 }
