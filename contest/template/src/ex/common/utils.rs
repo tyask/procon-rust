@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-use itertools::iproduct;
-
 use crate::common::*;
 
 // 素数判定

@@ -235,8 +235,10 @@ impl<N: SimplePrimInt+FromT<is>> Pt<N> {
 impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
     pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
 }
+
+pub type Radian = f64;
 impl Pt<f64> {
-    pub fn rot(self, r: f64) -> Pt<f64> {
+    pub fn rot(self, r: Radian) -> Pt<f64> {
         let (x, y) = (self.x, self.y);
         Self::new(r.cos()*x-r.sin()*y, r.sin()*x+r.cos()*y) // 反時計回りにr度回転(rはradian)
     }
@@ -251,6 +253,7 @@ impl<N: SimplePrimInt> Add<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn add(
 impl<N: SimplePrimInt> Sub<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn sub(mut self, rhs: Pt<N>) -> Self::Output { self -= rhs; self } }
 impl<N: SimplePrimInt> Mul<N>           for Pt<N> { type Output = Pt<N>; fn mul(mut self, rhs: N) -> Self::Output { self *= rhs; self } }
 impl<N: SimplePrimInt> Div<N>           for Pt<N> { type Output = Pt<N>; fn div(mut self, rhs: N) -> Self::Output { self /= rhs; self } }
+impl<N: SimplePrimInt+FromT<is>> Neg    for Pt<N> { type Output = Pt<N>; fn neg(mut self) -> Self::Output { self *= N::from_t(-1); self } }
 impl<N: SimplePrimInt+Default> Sum      for Pt<N> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::default(), |a, b| a + b) } }
 
 impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> proconio::source::Readable for Pt<N> {
@@ -321,6 +324,11 @@ impl Identify for String {
     fn ident(&self) -> Self::Ident { self.as_bytes().ident() }
     fn ident_by(&self, s: &str) -> Self::Ident { self.as_bytes().ident_by(s) }
 }
+
+pub trait ToC: IntoT<u8> + Copy {
+    fn to_c_by(self, ini: char) -> char { (ini.u8() + self.u8()).char() }
+}
+impl<T: IntoT<u8>+Copy> ToC for T {}
 
 // io
 
