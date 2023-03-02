@@ -74,10 +74,12 @@ pub fn rot<T:Copy>(g: &Vec<Vec<T>>) -> Vec<Vec<T>> {
     a
 }
 
-pub fn to_base_n(mut x: us, n: us) {
+// xをn進数に変換する.
+pub fn to_base_n(mut x: us, n: us) -> Vec<us> {
     let mut v = vec![];
     while x > 0 { v.push(x%n); x/=n; }
-    v.reverse()
+    v.reverse();
+    v
 }
 
 // 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.

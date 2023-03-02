@@ -28,6 +28,18 @@
 				"cwd": "${fileDirname}/../.."
 			},
 			"problemMatcher": []
-		}
+		},
+		{
+			"label": "Cargo Run",
+			"command": "cargo",
+			"args": [
+				"run",
+				"${fileBasenameNoExtension}",
+			],
+			"options": {
+				"cwd": "${fileDirname}/../.."
+			},
+			"problemMatcher": []
+		},
 	]
 }

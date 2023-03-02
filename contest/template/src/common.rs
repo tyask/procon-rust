@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports, unused_macros, non_snake_case, non_camel_case_types)]
 use std::{*, ops::*, collections::*, iter::Sum};
 use itertools::Itertools;
+use ::num::{One, Zero};
 
 pub type us        = usize;
 pub type is        = isize;
@@ -41,6 +42,7 @@ pub trait ExPrimInt: SimplePrimInt
         + FromT<us>
 {}
 
+
 #[macro_export] macro_rules! impl_prim_num {
     ($($t:ty),*) => {$(
         impl SimplePrimInt for $t { }
@@ -68,11 +70,11 @@ impl<T: IntoT<is>>   ToIs   for T { fn is(self)   -> is   { self.into_t() } }
 impl<T: IntoT<f64>>  ToF64  for T { fn f64(self)  -> f64  { self.into_t() } }
 impl<T: IntoT<u8>>   ToU8   for T { fn u8(self)   -> u8   { self.into_t() } }
 impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
-impl IntoT<us>  for char { fn into_t(self) -> us  { self as us } }
-impl IntoT<is>  for char { fn into_t(self) -> is  { self as is } }
-impl IntoT<u8>  for char { fn into_t(self) -> u8  { self as u8 } }
-impl IntoT<u64> for char { fn into_t(self) -> u64 { self as u64 } }
-impl IntoT<i64> for char { fn into_t(self) -> i64 { self as i64 } }
+impl IntoT<us>   for char  { fn into_t(self) -> us   { self as us } }
+impl IntoT<is>   for char  { fn into_t(self) -> is   { self as is } }
+impl IntoT<u8>   for char  { fn into_t(self) -> u8   { self as u8 } }
+impl IntoT<u64>  for char  { fn into_t(self) -> u64  { self as u64 } }
+impl IntoT<i64>  for char  { fn into_t(self) -> i64  { self as i64 } }
 impl IntoT<char> for char  { fn into_t(self) -> char { self } }
 impl IntoT<char> for &char { fn into_t(self) -> char { *self } }
 
@@ -99,17 +101,31 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
 #[macro_export] macro_rules! div_assign { ($a:expr,$b:expr) => { let v = $b; $a /= v; } }
 #[macro_export] macro_rules! rem_assign { ($a:expr,$b:expr) => { let v = $b; $a %= v; } }
 
-pub fn abs_diff<N: SimplePrimInt>           (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-pub fn gcd     <N: ExPrimInt>               (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
-pub fn lcm     <N: ExPrimInt>               (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
-pub fn floor   <N: SimplePrimInt>           (a: N, b: N)         -> N { a / b }
-pub fn ceil    <N: SimplePrimInt+FromT<us>> (a: N, b: N)         -> N { (a + b - N::from_t(1)) / b }
-pub fn modulo  <N: ExPrimInt>               (n: N, m: N)         -> N { let r = n % m; or!(r < N::from_t(0); r + m, r) }
-pub fn powmod  <N: ExPrimInt+FromT<us>+BitAnd<Output=N>+Shr<Output=N>>(mut n: N, mut k: N, m: N) -> N {
+pub fn abs_diff<N: SimplePrimInt>     (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
+pub fn gcd     <N: ExPrimInt>         (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
+pub fn lcm     <N: ExPrimInt>         (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
+pub fn floor   <N: SimplePrimInt>     (a: N, b: N)         -> N { a / b }
+pub fn ceil    <N: SimplePrimInt+One> (a: N, b: N)         -> N { (a + b - N::one()) / b }
+pub fn floor_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
+    if a>=N::zero() { floor(a, b) } else { -ceil(-a, b) }
+}
+pub fn ceil_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
+    if a>=N::zero() { ceil(a, b) } else { -floor(-a, b) }
+}
+pub fn safe_mod<N: ExPrimInt>(n: N, m: N) -> N { (n % m + m) % m }
+pub fn ext_gcd <N: ExPrimInt+Zero+One>(a: N, b: N, p: N, q: N) -> (N, N, N) {
+    // 拡張Euclidの互除法
+    // d=gcd(a,b)とし、ap + bq = d となる(p, q, d)を返す
+    if b == N::zero() { return (N::one(), N::zero(), a); }
+    let (p, _, d) = ext_gcd(b, a % b, q, p);
+    let q = a / b * p;
+    return (p, q, d);
+}
+pub fn powmod  <N: ExPrimInt+Zero+One+BitAnd<Output=N>+Shr<Output=N>>(mut n: N, mut k: N, m: N) -> N {
     // n^k mod m
-    let one = N::from_t(1);
+    let one = N::one();
     let mut a = one;
-    while k > N::from_t(0) {
+    while k > N::zero() {
         if k & one == one { a *= n; a %= m; }
         n %= m; n *= n; n %= m;
         k = k >> one;
@@ -201,12 +217,45 @@ impl<T:Ord> BSetTrait<T> for bset<T> {
 }
 
 // Graph
-pub type Graph = Vec<Vec<us>>;
-pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Graph {
-    let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|g[u].push(v)); g
+#[derive(Clone,Debug)]
+pub struct Graph(pub Vec<Vec<us>>);
+impl Graph {
+    pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Self {
+        let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|g[u].push(v));
+        Graph(g)
+    }
+    pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Self {
+        let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
+        Graph(g)
+    }
+    pub fn len(&self) -> us { self.0.len() }
+    pub fn rev(&self) -> Self {
+        let ruv = self.0.iter().enumerate()
+            .flat_map(|(i,v)|v.iter().map(move |&j|(j,i))).cv();
+        Self::digraph(self.len(), &ruv)
+    }
+    pub fn bfs(&self, s: us) -> Vec<us> {
+        let mut d = vec![us::INF; self.len()];
+        d[s] = 0;
+        let mut que = deque::new();
+        que.push_back(s);
+        while let Some(a) = que.pop_front() {
+            for &b in &self[a] {
+                if d[b] > d[a] + 1 {
+                    d[b] = d[a] + 1;
+                    que.push_back(b);
+                }
+            }
+        }
+        d
+    }
 }
-pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Graph {
-    let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);}); g
+impl<T: IntoT<us>> Index<T> for Graph {
+    type Output = Vec<us>;
+    fn index(&self, i: T) -> &Self::Output { &self.0[i.into_t()] }
+}
+impl<T: IntoT<us>> IndexMut<T> for Graph {
+    fn index_mut(&mut self, i: T) -> &mut Self::Output { &mut self.0[i.into_t()] }
 }
 
 // Pt
@@ -333,8 +382,8 @@ impl<T: IntoT<u8>+Copy> ToC for T {}
 // io
 
 // インタラクティブ問題ではこれをinputに渡す
-// let src = from_stdin();
-// input! {from src, n: usize}
+// let mut src = from_stdin();
+// input! {from &mut src, n: usize}
 pub fn from_stdin() -> proconio::source::line::LineSource<io::BufReader<io::Stdin>> {
     proconio::source::line::LineSource::new(io::BufReader::new(io::stdin()))
 }

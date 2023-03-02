@@ -15,6 +15,9 @@
 	// 	],
 	// 	"description": "Log output to console"
 	// }
+	"println!(\"\")": {
+		"prefix": "p", "body": [ "println!(\"$1\");" ],
+	},
 	"println!(\"{}\", )": {
 		"prefix": "pp", "body": [ "println!(\"{}\", $1);" ],
 	},

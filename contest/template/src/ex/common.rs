@@ -2,6 +2,7 @@ pub mod combination;
 pub mod cumsum;
 pub mod modint;
 pub mod multiset;
+pub mod range_bounds_ex;
 pub mod segtree;
 pub mod topological_sort;
 pub mod unionfind;
