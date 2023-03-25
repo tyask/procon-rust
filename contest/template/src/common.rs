@@ -49,12 +49,13 @@ pub trait ExPrimInt: SimplePrimInt
         impl ExPrimInt     for $t { }
         impl FromT<us>   for $t { fn from_t(n: us) -> Self { n as $t } }
         impl FromT<is>   for $t { fn from_t(n: is) -> Self { n as $t } }
-        impl IntoT<us>   for $t { fn into_t(self)  -> us   { self as us } }
-        impl IntoT<is>   for $t { fn into_t(self)  -> is   { self as is } }
+        impl IntoT<us>   for $t { fn into_t(self)  -> us   { self as us  } }
+        impl IntoT<is>   for $t { fn into_t(self)  -> is   { self as is  } }
         impl IntoT<f64>  for $t { fn into_t(self)  -> f64  { self as f64 } }
-        impl IntoT<u8>   for $t { fn into_t(self)  -> u8   { self as u8 } }
-        impl IntoT<char> for $t { fn into_t(self)  -> char { (self as u8) as char } }
+        impl IntoT<u8>   for $t { fn into_t(self)  -> u8   { self as u8  } }
+        impl IntoT<u32>  for $t { fn into_t(self)  -> u32  { self as u32 } }
         impl IntoT<u64>  for $t { fn into_t(self)  -> u64  { self as u64 } }
+        impl IntoT<char> for $t { fn into_t(self)  -> char { (self as u8) as char } }
     )*}
 }
 impl_prim_num! {isize, i8, i32, i64, usize, u8, u32, u64, f32, f64}
@@ -73,6 +74,7 @@ impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
 impl IntoT<us>   for char  { fn into_t(self) -> us   { self as us } }
 impl IntoT<is>   for char  { fn into_t(self) -> is   { self as is } }
 impl IntoT<u8>   for char  { fn into_t(self) -> u8   { self as u8 } }
+impl IntoT<u32>  for char  { fn into_t(self) -> u32  { self as u32 } }
 impl IntoT<u64>  for char  { fn into_t(self) -> u64  { self as u64 } }
 impl IntoT<i64>  for char  { fn into_t(self) -> i64  { self as i64 } }
 impl IntoT<char> for char  { fn into_t(self) -> char { self } }
@@ -81,6 +83,13 @@ impl IntoT<char> for &char { fn into_t(self) -> char { *self } }
 pub trait Inf { const INF: Self; }
 impl Inf for us { const INF: Self = std::usize::MAX / 4; }
 impl Inf for is { const INF: Self = std::isize::MAX / 4; }
+
+pub trait Wrapping {
+    fn wraping_add(self, a: Self) -> Self;
+}
+impl Wrapping for us  { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
+impl Wrapping for is  { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
+impl Wrapping for i64 { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
 
 // Utilities
 pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
@@ -93,60 +102,45 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
 }
 
 #[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
-#[macro_export] macro_rules! chmax { ($a:expr,$b:expr) => { if $a < $b { $a = $b; true } else { false } } }
-#[macro_export] macro_rules! chmin { ($a:expr,$b:expr) => { if $a > $b { $a = $b; true } else { false } } }
-#[macro_export] macro_rules! add_assign { ($a:expr,$b:expr) => { let v = $b; $a += v; } }
-#[macro_export] macro_rules! sub_assign { ($a:expr,$b:expr) => { let v = $b; $a -= v; } }
-#[macro_export] macro_rules! mul_assign { ($a:expr,$b:expr) => { let v = $b; $a *= v; } }
-#[macro_export] macro_rules! div_assign { ($a:expr,$b:expr) => { let v = $b; $a /= v; } }
-#[macro_export] macro_rules! rem_assign { ($a:expr,$b:expr) => { let v = $b; $a %= v; } }
+#[macro_export] macro_rules! chmax { ($a:expr,$b:expr) => { { let v = $b; if $a < v { $a = v; true } else { false } } } }
+#[macro_export] macro_rules! chmin { ($a:expr,$b:expr) => { { let v = $b; if $a > v { $a = v; true } else { false } } } }
+#[macro_export] macro_rules! add_assign { ($a:expr,$b:expr) => { { let v = $b; $a += v; } } }
+#[macro_export] macro_rules! sub_assign { ($a:expr,$b:expr) => { { let v = $b; $a -= v; } } }
+#[macro_export] macro_rules! mul_assign { ($a:expr,$b:expr) => { { let v = $b; $a *= v; } } }
+#[macro_export] macro_rules! div_assign { ($a:expr,$b:expr) => { { let v = $b; $a /= v; } } }
+#[macro_export] macro_rules! rem_assign { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
 
 pub fn abs_diff<N: SimplePrimInt>     (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-pub fn gcd     <N: ExPrimInt>         (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
-pub fn lcm     <N: ExPrimInt>         (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
-pub fn floor   <N: SimplePrimInt>     (a: N, b: N)         -> N { a / b }
-pub fn ceil    <N: SimplePrimInt+One> (a: N, b: N)         -> N { (a + b - N::one()) / b }
+pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
+pub fn lcm<N: ExPrimInt> (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
+pub fn floor<N: SimplePrimInt>(a: N, b: N) -> N { a / b }
+pub fn ceil<N: SimplePrimInt+One>(a: N, b: N) -> N { (a + b - N::one()) / b }
 pub fn floor_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
     if a>=N::zero() { floor(a, b) } else { -ceil(-a, b) }
 }
 pub fn ceil_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
     if a>=N::zero() { ceil(a, b) } else { -floor(-a, b) }
 }
-pub fn safe_mod<N: ExPrimInt>(n: N, m: N) -> N { (n % m + m) % m }
-pub fn ext_gcd <N: ExPrimInt+Zero+One>(a: N, b: N, p: N, q: N) -> (N, N, N) {
-    // 拡張Euclidの互除法
-    // d=gcd(a,b)とし、ap + bq = d となる(p, q, d)を返す
-    if b == N::zero() { return (N::one(), N::zero(), a); }
-    let (p, _, d) = ext_gcd(b, a % b, q, p);
-    let q = a / b * p;
-    return (p, q, d);
-}
-pub fn powmod  <N: ExPrimInt+Zero+One+BitAnd<Output=N>+Shr<Output=N>>(mut n: N, mut k: N, m: N) -> N {
-    // n^k mod m
-    let one = N::one();
-    let mut a = one;
-    while k > N::zero() {
-        if k & one == one { a *= n; a %= m; }
-        n %= m; n *= n; n %= m;
-        k = k >> one;
-    }
-    a
-}
+
+pub fn safe_mod<N: ExPrimInt> (n: N, m: N) -> N { (n % m + m) % m }
 pub fn sumae  <N: SimplePrimInt+FromT<us>>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_t(2) }
 pub fn sumad  <N: SimplePrimInt+FromT<us>>(n: N, a: N, d: N) -> N { n * (N::from_t(2) * a + (n - N::from_t(1)) * d) / N::from_t(2) }
 pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> usize { let mut d = 0; while n > N::from_t(0) { d+=1; n/=N::from_t(10); } d }
+fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
+    if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
+}
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 
 pub trait IterTrait : Iterator {
-    fn counts<N: SimplePrimInt+FromT<us>>(&mut self) -> map<Self::Item, N> where Self::Item: hash::Hash+Eq {
-        self.fold(map::<_,_>::new(), |mut m, x| { *m.or_def_mut(x) += N::from_t(1); m })
+    fn counts<N: SimplePrimInt+FromT<us>>(&mut self) -> map<Self::Item, N> where Self::Item: hash::Hash+Eq+Clone {
+        self.fold(map::<_,_>::new(), |mut m, x| { *m.or_def_mut(&x) += N::from_t(1); m })
     }
-    fn grouping_to_bmap<'a, K:Ord, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
-        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(get_val(&x)); m })
+    fn grouping_to_bmap<'a, K:Ord+Clone, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
+        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
     }
-    fn grouping_to_map<K:Eq+hash::Hash, V>(&mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> map<K, Vec<V>> {
-        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(get_key(&x)).push(get_val(&x)); m })
+    fn grouping_to_map<K:Eq+hash::Hash+Clone, V>(&mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> map<K, Vec<V>> {
+        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 }
@@ -176,14 +170,14 @@ impl<T:Clone+Copy> VecOr<T>            for Vec<T> { fn or<'a>(&'a self, i: us, v
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
-pub trait MapOrDefMut<K,V> { fn or_def_mut(&mut self, k: K) -> &mut V; }
+pub trait MapOrDefMut<K,V> { fn or_def_mut(&mut self, k: &K) -> &mut V; }
 pub trait MapOr<K,V> { fn or<'a>(&'a self, k: &K, v: &'a  V) -> &'a V; }
 
 impl<K:Eq+hash::Hash, V:Default+Clone> MapOrDef<K, V> for map<K, V> {
     fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
 }
-impl<K:Eq+hash::Hash, V:Default> MapOrDefMut<K, V> for map<K, V> {
-    fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+impl<K:Eq+hash::Hash+Clone, V:Default> MapOrDefMut<K, V> for map<K, V> {
+    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
 }
 impl<K:Eq+hash::Hash, V> MapOr<K, V> for map<K, V> {
     fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
@@ -192,8 +186,8 @@ impl<K:Eq+hash::Hash, V> MapOr<K, V> for map<K, V> {
 impl<K:Ord, V:Default+Clone> MapOrDef<K, V> for bmap<K, V> {
     fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
 }
-impl<K:Ord, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
-    fn or_def_mut(&mut self, k: K) -> &mut V { self.entry(k).or_default() }
+impl<K:Ord+Clone, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
+    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
 }
 impl<K:Ord, V> MapOr<K, V> for bmap<K, V> {
     fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
@@ -262,27 +256,32 @@ impl<T: IntoT<us>> IndexMut<T> for Graph {
 #[derive(Debug,Copy,Clone,PartialEq,Eq,Hash,PartialOrd,Ord,Default)]
 pub struct Pt<N> { pub x: N, pub y: N }
 
-impl<N: SimplePrimInt> Pt<N> {
+impl<N> Pt<N> {
     pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Pt<N> { Pt{x:x.into_t(), y:y.into_t()} }
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn tuple(self) -> (N, N) { (self.x, self.y) }
+}
+impl<N: SimplePrimInt> Pt<N> {
     pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
     pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
 }
 impl<N: SimplePrimInt+FromT<is>> Pt<N> {
     pub fn dir4() -> Vec<Pt<N>> {
-        vec![Pt::is(0,1), Pt::is(0,-1), Pt::is(1,0), Pt::is(-1,0)]
+        vec![Pt::is(0,1), Pt::is(0,!0), Pt::is(1,0), Pt::is(!0,0)]
     }
     pub fn dir8() -> Vec<Pt<N>> {
         vec![
-            Pt::is(0,1), Pt::is(0,-1), Pt::is(1, 0), Pt::is(-1, 0),
-            Pt::is(1,1), Pt::is(1,-1), Pt::is(-1,1), Pt::is(-1,-1)
+            Pt::is(0,1), Pt::is(0,!0), Pt::is(1, 0), Pt::is(!0, 0),
+            Pt::is(1,1), Pt::is(1,!0), Pt::is(!0,1), Pt::is(!0,!0)
             ]
     }
     fn is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
 }
 impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
     pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
+}
+impl<N: Wrapping> Wrapping for Pt<N> {
+    fn wraping_add(self, a: Self) -> Self { Self::of(self.x.wraping_add(a.x), self.y.wraping_add(a.y)) }
 }
 
 pub type Radian = f64;
@@ -380,7 +379,6 @@ pub trait ToC: IntoT<u8> + Copy {
 impl<T: IntoT<u8>+Copy> ToC for T {}
 
 // io
-
 // インタラクティブ問題ではこれをinputに渡す
 // let mut src = from_stdin();
 // input! {from &mut src, n: usize}

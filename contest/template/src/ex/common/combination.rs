@@ -2,7 +2,7 @@
 use crate::common::FromT;
 use super::modint::{Modint, Modules};
 
-// CAP(ex::modint)
+// CAP(ex::common::modint)
 
 struct Combination<M> { facts: Vec<Modint<M>>, ifacts: Vec<Modint<M>> }
 

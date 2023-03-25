@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use std::*;
 use crate::common::*;
 
 // 素数判定
@@ -49,7 +50,7 @@ pub fn prime_fact(mut n: us) -> bmap<us, us> {
 }
 
 // 座標圧縮
-pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<us> {
+pub fn compress<T:Clone+PartialEq+Ord>(v: &[T]) -> Vec<us> {
     use superslice::Ext;
     use itertools::Itertools;
     let t = v.iter().cloned().sorted().dedup().collect_vec();
@@ -57,7 +58,7 @@ pub fn compress<T:Clone+PartialEq+Ord>(v: &Vec<T>) -> Vec<us> {
 }
 
 // ランレングス圧縮
-pub fn runlength_encoding<T:PartialEq+Copy>(v: &Vec<T>) -> Vec<(T, us)> {
+pub fn runlength_encoding<T:PartialEq+Copy>(v: &[T]) -> Vec<(T, us)> {
     let mut a = Vec::new();
     for i in 0..v.len() {
         if i==0 || v[i-1]!=v[i] { a.push((v[i],0)) }
@@ -82,21 +83,26 @@ pub fn to_base_n(mut x: us, n: us) -> Vec<us> {
     v
 }
 
-// 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.
-// g: グラフを表す隣接リスト
-fn colorize_bipartite(g: &Vec<Vec<us>>) -> Result<Vec<is>,()> {
-    let mut col = vec![-1; g.len()];
-    fn dfs(g: &Vec<Vec<us>>, col: &mut Vec<is>, v: us, c: is) -> bool {
-        if col[v] >= 0 { return true; }
-        col[v] = c;
-        for &n in &g[v] {
-            if col[n] == c || col[n] < 0 && !dfs(g, col, n, 1-c) { return false; }
-        }
-        true
+// 拡張Euclidの互除法
+// g=gcd(a,b)とし、ax + by = g となる(g, x, y)を返す
+pub fn extgcd<N: ExPrimInt+::num::Zero+::num::One>(a: N, b: N) -> (N, N, N) {
+    if b.is_zero() { (a, N::one(), N::zero()) }
+    else {
+        let (g, x, y) = extgcd(b, a % b);
+        (g, y, x - a/b*y)
     }
+}
 
-    for v in 0..g.len() { if !dfs(&g, &mut col, v, 0) { return Err(()); } }
-    Ok(col)
+// n^k mod m
+pub fn powmod<N: ExPrimInt+::num::Zero+::num::One+ops::BitAnd<Output=N>+ops::Shr<Output=N>>(mut n: N, mut k: N, m: N) -> N {
+    let one = N::one();
+    let mut a = one;
+    while k > N::zero() {
+        if k & one == one { a *= n; a %= m; }
+        n %= m; n *= n; n %= m;
+        k = k >> one;
+    }
+    a
 }
 
 // パスカルの三角形によりnCkを計算. O(n^2)

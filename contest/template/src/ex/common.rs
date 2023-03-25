@@ -1,5 +1,6 @@
 pub mod combination;
 pub mod cumsum;
+pub mod matrix;
 pub mod modint;
 pub mod multiset;
 pub mod range_bounds_ex;

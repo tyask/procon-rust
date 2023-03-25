@@ -1,7 +1,8 @@
 #![allow(dead_code)]
+use crate::{common::*, chmin};
 
 pub struct ZeroOneBfs {
-    pub g: Vec<Vec<(usize, isize)>>
+    pub g: Vec<Vec<(us, is)>>
 }
 
 impl ZeroOneBfs {
@@ -16,17 +17,14 @@ impl ZeroOneBfs {
     pub fn run(&self, s: usize) -> Vec<isize> {
         let g = &self.g;
         assert!(s < g.len());
-        let mut que = std::collections::VecDeque::new();
-        let mut dist = vec![isize::MAX; g.len()];
+        let mut que = deque::new();
+        let mut dist = vec![is::INF; g.len()];
         dist[s] = 0;
         que.push_back(s);
         while let Some(v) = que.pop_front() {
             for &(n, c) in &g[v] {
-                let nc = dist[v] + c;
-                if nc < dist[n] {
-                    dist[n] = nc;
-                    if c == 1 { que.push_back(n) }
-                    else { que.push_front(n) }
+                if chmin!(dist[n], dist[v]+c) {
+                    if c == 0 { que.push_front(n); } else { que.push_back(n); }
                 }
             }
         }

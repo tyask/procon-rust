@@ -4,14 +4,14 @@ use crate::{common::*, chmin};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Edge {
-    from: us,
-    to:   us,
-    cost: is
+    pub from: us,
+    pub to:   us,
+    pub cost: is
 }
 pub struct Dijkstra {
-    g: Vec<Vec<Edge>>,
-    dist: Vec<is>,
-    prev: Vec<us>,
+    pub g: Vec<Vec<Edge>>,
+    pub dist: Vec<is>,
+    pub prev: Vec<us>,
 }
 
 impl Edge {
@@ -24,7 +24,7 @@ impl Dijkstra {
     pub fn add(&mut self, e: Edge) -> &mut Self { self.g[e.from].push(e); self }
     pub fn add2(&mut self, e: Edge) -> &mut Self { self.add(e).add(e.reverse()) }
 
-    pub fn run(&mut self, s: us) {
+    pub fn run(&mut self, s: us) -> &Vec<is> {
         type P = (is, us); // cost, node
 
         self.dist = vec![is::INF; self.dist.len()];
@@ -47,10 +47,8 @@ impl Dijkstra {
                 }
             }
         }
-    }
 
-    pub fn dist(&self, t: us) -> is {
-        self.dist[t]
+        dist
     }
 
     pub fn restore_shortest_path(&self, mut t: us) -> Vec<us> {
