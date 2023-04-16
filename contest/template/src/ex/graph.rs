@@ -1,7 +1,10 @@
 pub mod dijkstra;
+pub mod euler_tour;
 pub mod fenwick_tree;
 pub mod fenwick_tree2d;
 pub mod grapher;
+pub mod hld;
 pub mod kruskal;
+pub mod lca;
 pub mod warshall_floyd;
 pub mod zero_one_bfs;

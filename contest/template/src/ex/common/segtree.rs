@@ -53,6 +53,13 @@ impl<T: Copy> SegTree<T> {
     }
 }
 
+impl<T: Copy+Add<Output=T>> SegTree<T> {
+    pub fn add(&mut self, i: us, v: T) { self.update(i, self.query(i) + v); }
+}
+impl<T: Copy+Sub<Output=T>> SegTree<T> {
+    pub fn sub(&mut self, i: us, v: T) { self.update(i, self.query(i) - v); }
+}
+
 impl<T: Copy+Ord> SegTree<T> {
     pub fn rng_min_query(n: us, max: T) -> Self {
         Self::new(n, Box::new(|a,b|std::cmp::min(a,b)), max)

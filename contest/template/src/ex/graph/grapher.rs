@@ -3,7 +3,7 @@ use crate::common::*;
 
 impl Graph {
     // 最短距離を2度計算することで木の直径を求める. (u:Node1, v:Node2, d:Distance)
-    fn find_tree_diameter(&self) -> (us, us, us) {
+    fn diameter(&self) -> (us, us, us) {
         let u = self.bfs(0).iter().enumerate().max_by_key(|p|p.1).map(|p|p.0).unwrap();
         let (v, &d) = self.bfs(u).iter().enumerate().max_by_key(|p|p.1).unwrap();
         (u, v, d)

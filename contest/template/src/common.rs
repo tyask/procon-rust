@@ -215,12 +215,17 @@ impl<T:Ord> BSetTrait<T> for bset<T> {
 pub struct Graph(pub Vec<Vec<us>>);
 impl Graph {
     pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|g[u].push(v));
-        Graph(g)
+        let mut g = vec![vec![]; n];
+        uv.iter().for_each(|&(u,v)|g[u].push(v));
+        Self(g)
     }
     pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n]; uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
-        Graph(g)
+        let mut g = vec![vec![]; n];
+        uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
+        Self(g)
+    }
+    pub fn tree(n: us, uv: &Vec<(us, us)>) -> Self {
+        Self::undigraph(n, uv)
     }
     pub fn len(&self) -> us { self.0.len() }
     pub fn rev(&self) -> Self {

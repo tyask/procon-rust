@@ -15,6 +15,9 @@
 	// 	],
 	// 	"description": "Log output to console"
 	// }
+	"i64": {
+		"prefix": "i", "body": [ "i64" ],
+	},
 	"println!(\"\")": {
 		"prefix": "p", "body": [ "println!(\"$1\");" ],
 	},
