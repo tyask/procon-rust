@@ -29,5 +29,17 @@
 			},
 			"problemMatcher": []
 		},
+		{
+			"label": "Cargo Run",
+			"command": "cargo",
+			"args": [
+				"run",
+			],
+			"options": {
+				"cwd": "${fileDirname}/../.."
+			},
+			"problemMatcher": []
+		},
+
 	]
 }

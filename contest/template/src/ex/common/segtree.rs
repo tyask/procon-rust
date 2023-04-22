@@ -1,41 +1,82 @@
 #![allow(dead_code)]
-use std::ops::*;
+use std::{ops::*, convert::Infallible, marker::PhantomData, cmp::min, iter::FromIterator};
+use num::Zero;
 use crate::common::*;
 
-pub struct SegTree<T> {
-    n: us,
-    dat: Vec<T>,
-    fx: Box<dyn Fn(T,T)->T>,
-    e: T,
+pub trait Monoid {
+    type T: Copy;
+    fn op(a: Self::T, b: Self::T) -> Self::T;
+    fn e() -> Self::T;
 }
 
-impl<T: Copy> SegTree<T> {
-    pub fn new(n: us, fx: Box<dyn Fn(T,T)->T>, e: T) -> Self {
-        Self{n: ceilpow2(n), dat: vec![e; n*4], fx, e}
-    }
+pub struct SegTree<M: Monoid> {
+    n: us, // 実データのサイズ
+    log: us, 
+    size: us,
+    dat: Vec<M::T>,
+}
 
-    pub fn update(&mut self, mut i: us, v: T) {
-        i += self.n - 1;
-        self.dat[i] = v;
-        while i > 0 {
-            i = par(i);
-            self.dat[i] = self.fx.as_ref()(self.dat[lch(i)], self.dat[rch(i)]);
+impl<M: Monoid> SegTree<M> {
+
+    pub fn set(&mut self, mut p: us, v: M::T) {
+        self.check_index(p);
+        p += self.size;
+        self.dat[p] = v;
+        for i in 1..=self.log {
+            self.update(p >> i);
         }
     }
 
-    pub fn query(&self, i: us) -> T { self.query_rng(i..=i) }
-    pub fn query_rng(&self, rng: impl RangeBounds<us>) -> T { self.query_sub(&rng, 0, 0, self.n) }
+    fn update(&mut self, k: us) {
+        self.dat[k] = M::op(self.dat[2*k], self.dat[2*k+1]);
+    }
 
-    fn query_sub(&self, rng: &impl RangeBounds<us>, k: us, l: us, r: us) -> T {
+    fn check_index(&self, p: us) {
+        assert!(p < self.n);
+    }
+
+    pub fn get(&self, p: us) -> M::T {
+        self.check_index(p);
+        self.dat[p + self.size]
+    }
+
+    pub fn prod(&self, rng: impl RangeBounds<us>) -> M::T {
+        // self.prod_sub(&rng, 0, 0, self.n)
+        let rng = self.to_range(&rng);
+        let (mut l, mut r) = (rng.start, rng.end);
+        assert!(l <= r && r <= self.n);
+        let mut sml = M::e();
+        let mut smr = M::e();
+        l += self.size;
+        r += self.size;
+
+        while l < r {
+            if l & 1 == 1 {
+                sml = M::op(sml, self.dat[l]);
+                l += 1;
+            }
+            if r & 1 == 1 {
+                r -= 1;
+                smr = M::op(self.dat[r], smr);
+            }
+            l >>= 1;
+            r >>= 1;
+        }
+
+        M::op(sml, smr)
+
+    }
+
+    fn prod_sub(&self, rng: &impl RangeBounds<us>, k: us, l: us, r: us) -> M::T {
         let rng = self.to_range(rng);
         let (a, b) = (rng.start, rng.end);
 
-        if r <= a || b <= l { return self.e; }
+        if r <= a || b <= l { return M::e(); }
         if a <= l && r <= b { return self.dat[k]; }
 
-        let vl = self.query_sub(&rng, k*2+1, l, (l+r)/2);
-        let vr = self.query_sub(&rng, k*2+2, (l+r)/2, r);
-        self.fx.as_ref()(vl, vr)
+        let vl = self.prod_sub(&rng, k*2+1, l, (l+r)/2);
+        let vr = self.prod_sub(&rng, k*2+2, (l+r)/2, r);
+        M::op(vl, vr)
     }
 
     fn to_range(&self, r: &impl RangeBounds<us>) -> Range<us> {
@@ -51,30 +92,128 @@ impl<T: Copy> SegTree<T> {
         };
         s..e
     }
+
 }
 
-impl<T: Copy+Add<Output=T>> SegTree<T> {
-    pub fn add(&mut self, i: us, v: T) { self.update(i, self.query(i) + v); }
-}
-impl<T: Copy+Sub<Output=T>> SegTree<T> {
-    pub fn sub(&mut self, i: us, v: T) { self.update(i, self.query(i) - v); }
-}
-
-impl<T: Copy+Ord> SegTree<T> {
-    pub fn rng_min_query(n: us, max: T) -> Self {
-        Self::new(n, Box::new(|a,b|std::cmp::min(a,b)), max)
-    }
-    pub fn rng_max_query(n: us, min: T) -> Self {
-        Self::new(n, Box::new(|a,b|std::cmp::max(a,b)), min)
-    }
-}
-impl<T: Copy+Add<Output=T>+Default> SegTree<T> {
-    pub fn rng_sum_query(n: us) -> Self {
-        Self::new(n, Box::new(|a,b|a+b), T::default())
+impl <M: Monoid> From<&Vec<M::T>> for SegTree<M> {
+    fn from(v: &Vec<M::T>) -> Self {
+        let n = v.len();
+        let log = ceilpow2(n);
+        let size = 1 << log;
+        let mut dat = vec![M::e(); 2 * size];
+        dat[size..][..n].clone_from_slice(v);
+        let mut s = SegTree { n, log, size, dat };
+        for i in (0..size-1).rev() { s.update(i); }
+        s
     }
 }
 
-fn ceilpow2(cap: us) -> us { let mut x = 1; while cap > x { x *= 2; } x }
-fn par(i: us) -> us { (i - 1) / 2 }
-fn lch(i: us) -> us { i * 2 + 1 }
-fn rch(i: us) -> us { i * 2 + 2 }
+impl<M: Monoid> SegTree<M> {
+    pub fn new(n: us) -> Self { vec![M::e(); n].into() }
+}
+impl <M: Monoid> From<Vec<M::T>> for SegTree<M> {
+    fn from(v: Vec<M::T>) -> Self { (&v).into() }
+}
+impl <M: Monoid> FromIterator<M::T> for SegTree<M> {
+    fn from_iter<T: IntoIterator<Item = M::T>>(iter: T) -> Self {
+        iter.into_iter().cv().into()
+    }
+}
+
+impl<M: Monoid> SegTree<M> where M::T: Copy+Add<Output=M::T> {
+    pub fn add(&mut self, i: us, v: M::T) { self.set(i, self.get(i) + v); }
+}
+impl<M: Monoid> SegTree<M> where M::T: Copy+Sub<Output=M::T> {
+    pub fn sub(&mut self, i: us, v: M::T) { self.set(i, self.get(i) - v); }
+}
+
+pub struct Min<T>(Infallible, PhantomData<fn() -> T>);
+impl<T: Copy + Ord + Inf> Monoid for Min<T> {
+    type T = T;
+    fn op(a: Self::T, b: Self::T) -> Self::T { min(a, b) }
+    fn e() -> Self::T { T::INF }
+}
+
+pub struct Max<T>(Infallible, PhantomData<fn() -> T>);
+impl<T: Copy + Ord + Inf> Monoid for Max<T> {
+    type T = T;
+    fn op(a: Self::T, b: Self::T) -> Self::T { std::cmp::max(a, b) }
+    fn e() -> Self::T { T::MINF }
+}
+pub struct Additive<T>(Infallible, PhantomData<fn() -> T>);
+impl<T: Copy + Ord + Zero> Monoid for Additive<T> {
+    type T = T;
+    fn op(a: Self::T, b: Self::T) -> Self::T { a + b }
+    fn e() -> Self::T { T::zero() }
+}
+
+fn ceilpow2(n: us) -> us { std::mem::size_of::<us>() * 8 - n.saturating_sub(1).leading_zeros().us() }
+
+// CAP(IGNORE_BELOW)
+
+#[cfg(test)]
+mod tests {
+    use std::ops::RangeBounds;
+    use crate::common::*;
+    use core::ops::Bound::{Excluded, Included};
+    use super::{SegTree, Max};
+
+    #[test]
+    fn test_max_segtree() {
+        let base: Vec<i64> = vec![3, 1, 4, 1, 5, 9, 2, 6, 5, 3];
+        let n = base.len();
+        let segtree: SegTree<Max<_>> = base.clone().into();
+        check_segtree(&base, &segtree);
+
+        let mut segtree = SegTree::<Max<_>>::new(n);
+        let mut internal = vec![i64::MINF; n];
+        for i in 0..n {
+            segtree.set(i, base[i]);
+            internal[i] = base[i];
+            check_segtree(&internal, &segtree);
+        }
+
+        segtree.set(6, 5);
+        internal[6] = 5;
+        check_segtree(&internal, &segtree);
+
+        segtree.set(6, 0);
+        internal[6] = 0;
+        check_segtree(&internal, &segtree);
+    }
+
+    fn check_segtree(base: &[i64], segtree: &SegTree<Max<i64>>) {
+        let n = base.len();
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..n {
+            assert_eq!(segtree.get(i), base[i], "i={}", i);
+        }
+
+        check(base, segtree, ..);
+        for i in 0..=n {
+            check(base, segtree, ..i);
+            check(base, segtree, i..);
+            if i < n {
+                check(base, segtree, ..=i);
+            }
+            for j in i..=n {
+                check(base, segtree, i..j);
+                if j < n {
+                    check(base, segtree, i..=j);
+                    check(base, segtree, (Excluded(i), Included(j)));
+                }
+            }
+        }
+    }
+
+    fn check(base: &[i64], segtree: &SegTree<Max<i64>>, range: impl RangeBounds<usize>) {
+        let expected = base
+            .iter()
+            .enumerate()
+            .filter_map(|(i, a)| Some(a).filter(|_| range.contains(&i)))
+            .max()
+            .copied()
+            .unwrap_or(i64::MINF);
+        assert_eq!(segtree.prod(range), expected);
+    }
+}

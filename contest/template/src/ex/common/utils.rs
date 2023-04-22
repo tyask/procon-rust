@@ -105,6 +105,26 @@ pub fn powmod<N: ExPrimInt+::num::Zero+::num::One+ops::BitAnd<Output=N>+ops::Shr
     a
 }
 
+// 巡回セールスマン問題
+// g[u][v] := u->vの距離 (gは隣接行列とする)
+fn traveling_salesman(g: &Vec<Vec<i64>>) -> i64 {
+    use itertools::iproduct;
+    use crate:: chmin;
+
+    let n = g.len();
+    // dp[s][v] := 0から出発してsの頂点集合を巡回しvに到達する経路のうちの最短距離
+    let mut dp = vec![vec![i64::INF; n]; 1<<n];
+    dp[0][0] = 0;
+    for (s, v, u) in iproduct!(0..1<<n, 0..n, 0..n) {
+        // u -> v に遷移するため、uが立っておりvが立ってない場合のみ遷移する.
+        if (s == 0 || s>>u&1==1) && s>>v&1==0 && s != v {
+            chmin!(dp[s|1<<v][v], dp[s][u]+g[u][v]);
+        }
+    }
+    // 全頂点を巡回して0に戻る値が求める解
+    dp[(1<<n)-1][0]
+}
+
 // パスカルの三角形によりnCkを計算. O(n^2)
 pub struct Combination { m: Vec<Vec<us>>, }
 impl Combination {

@@ -55,6 +55,8 @@ pub trait ExPrimInt: SimplePrimInt
         impl IntoT<u8>   for $t { fn into_t(self)  -> u8   { self as u8  } }
         impl IntoT<u32>  for $t { fn into_t(self)  -> u32  { self as u32 } }
         impl IntoT<u64>  for $t { fn into_t(self)  -> u64  { self as u64 } }
+        impl IntoT<i32>  for $t { fn into_t(self)  -> i32  { self as i32 } }
+        impl IntoT<i64>  for $t { fn into_t(self)  -> i64  { self as i64 } }
         impl IntoT<char> for $t { fn into_t(self)  -> char { (self as u8) as char } }
     )*}
 }
@@ -62,12 +64,14 @@ impl_prim_num! {isize, i8, i32, i64, usize, u8, u32, u64, f32, f64}
 
 pub trait ToUs   { fn us(self) -> us; }
 pub trait ToIs   { fn is(self) -> is; }
+pub trait ToI64  { fn i64(self) -> i64; }
 pub trait ToF64  { fn f64(self) -> f64; }
 pub trait ToU8   { fn u8(self) -> u8; }
 pub trait ToChar { fn char(self) -> char; }
 
 impl<T: IntoT<us>>   ToUs   for T { fn us(self)   -> us   { self.into_t() } }
 impl<T: IntoT<is>>   ToIs   for T { fn is(self)   -> is   { self.into_t() } }
+impl<T: IntoT<i64>>  ToI64  for T { fn i64(self)  -> i64  { self.into_t() } }
 impl<T: IntoT<f64>>  ToF64  for T { fn f64(self)  -> f64  { self.into_t() } }
 impl<T: IntoT<u8>>   ToU8   for T { fn u8(self)   -> u8   { self.into_t() } }
 impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
@@ -80,9 +84,22 @@ impl IntoT<i64>  for char  { fn into_t(self) -> i64  { self as i64 } }
 impl IntoT<char> for char  { fn into_t(self) -> char { self } }
 impl IntoT<char> for &char { fn into_t(self) -> char { *self } }
 
-pub trait Inf { const INF: Self; }
-impl Inf for us { const INF: Self = std::usize::MAX / 4; }
-impl Inf for is { const INF: Self = std::isize::MAX / 4; }
+pub trait Inf {
+    const INF: Self;
+    const MINF: Self;
+}
+impl Inf for us  {
+    const INF: Self = std::usize::MAX / 4;
+    const MINF: Self = 0;
+}
+impl Inf for is  {
+    const INF: Self = std::isize::MAX / 4;
+    const MINF: Self = -Self::INF;
+}
+impl Inf for i64 {
+    const INF: Self = std::i64::MAX / 4;
+    const MINF: Self = -Self::INF;
+}
 
 pub trait Wrapping {
     fn wraping_add(self, a: Self) -> Self;
@@ -101,14 +118,14 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
         .join().unwrap();
 }
 
-#[macro_export] macro_rules! or { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
+#[macro_export] macro_rules! or    { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
 #[macro_export] macro_rules! chmax { ($a:expr,$b:expr) => { { let v = $b; if $a < v { $a = v; true } else { false } } } }
 #[macro_export] macro_rules! chmin { ($a:expr,$b:expr) => { { let v = $b; if $a > v { $a = v; true } else { false } } } }
-#[macro_export] macro_rules! add_assign { ($a:expr,$b:expr) => { { let v = $b; $a += v; } } }
-#[macro_export] macro_rules! sub_assign { ($a:expr,$b:expr) => { { let v = $b; $a -= v; } } }
-#[macro_export] macro_rules! mul_assign { ($a:expr,$b:expr) => { { let v = $b; $a *= v; } } }
-#[macro_export] macro_rules! div_assign { ($a:expr,$b:expr) => { { let v = $b; $a /= v; } } }
-#[macro_export] macro_rules! rem_assign { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
+#[macro_export] macro_rules! add   { ($a:expr,$b:expr) => { { let v = $b; $a += v; } } }
+#[macro_export] macro_rules! sub   { ($a:expr,$b:expr) => { { let v = $b; $a -= v; } } }
+#[macro_export] macro_rules! mul   { ($a:expr,$b:expr) => { { let v = $b; $a *= v; } } }
+#[macro_export] macro_rules! div   { ($a:expr,$b:expr) => { { let v = $b; $a /= v; } } }
+#[macro_export] macro_rules! rem   { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
 
 pub fn abs_diff<N: SimplePrimInt>     (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
 pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }

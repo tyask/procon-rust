@@ -6,15 +6,20 @@ pub struct ZeroOneBfs {
 }
 
 impl ZeroOneBfs {
-    pub fn new(n: usize) -> ZeroOneBfs { ZeroOneBfs { g: vec![vec![]; n] } }
-    pub fn add_path(&mut self, u: usize, v: usize, cost: isize) {
+    pub fn new(n: us) -> Self { Self { g: vec![vec![]; n] } }
+
+    pub fn add(&mut self, u: us, v: us, cost: is) {
         let g = &mut self.g;
         assert!(u < g.len() && v < g.len() && (cost == 0 || cost == 1));
         g[u].push((v,cost));
-        g[v].push((u,cost));
     }
 
-    pub fn run(&self, s: usize) -> Vec<isize> {
+    pub fn add2(&mut self, u: us, v: us, cost: is) {
+        self.add(u, v, cost);
+        self.add(v, u, cost);
+    }
+
+    pub fn run(&self, s: us) -> Vec<is> {
         let g = &self.g;
         assert!(s < g.len());
         let mut que = deque::new();
