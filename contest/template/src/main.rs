@@ -11,7 +11,8 @@ fn main() {
 fn solve() {
 }
 
-pub mod ex {
+// #CAP(fumin::modint)
+pub mod fumin {
 }
 
 pub mod common {

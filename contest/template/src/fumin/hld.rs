@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 use crate::common::*;
+use super::graph::Graph;
+
+// CAP(fumin::graph)
 
 pub struct HLD {
     g: Graph,

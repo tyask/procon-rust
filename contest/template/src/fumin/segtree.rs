@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{ops::*, convert::Infallible, marker::PhantomData, cmp::min, iter::FromIterator};
+use std::{ops::{*, self}, convert::Infallible, marker::PhantomData, cmp::min, iter::FromIterator};
 use num::Zero;
 use crate::common::*;
 
@@ -9,6 +9,7 @@ pub trait Monoid {
     fn e() -> Self::T;
 }
 
+#[derive(Clone)]
 pub struct SegTree<M: Monoid> {
     n: us, // 実データのサイズ
     log: us, 
@@ -41,7 +42,6 @@ impl<M: Monoid> SegTree<M> {
     }
 
     pub fn prod(&self, rng: impl RangeBounds<us>) -> M::T {
-        // self.prod_sub(&rng, 0, 0, self.n)
         let rng = self.to_range(&rng);
         let (mut l, mut r) = (rng.start, rng.end);
         assert!(l <= r && r <= self.n);
@@ -127,6 +127,7 @@ impl<M: Monoid> SegTree<M> where M::T: Copy+Sub<Output=M::T> {
     pub fn sub(&mut self, i: us, v: M::T) { self.set(i, self.get(i) - v); }
 }
 
+#[derive(Clone)]
 pub struct Min<T>(Infallible, PhantomData<fn() -> T>);
 impl<T: Copy + Ord + Inf> Monoid for Min<T> {
     type T = T;
@@ -134,16 +135,27 @@ impl<T: Copy + Ord + Inf> Monoid for Min<T> {
     fn e() -> Self::T { T::INF }
 }
 
+#[derive(Clone)]
 pub struct Max<T>(Infallible, PhantomData<fn() -> T>);
 impl<T: Copy + Ord + Inf> Monoid for Max<T> {
     type T = T;
     fn op(a: Self::T, b: Self::T) -> Self::T { std::cmp::max(a, b) }
     fn e() -> Self::T { T::MINF }
 }
+
+#[derive(Clone)]
 pub struct Additive<T>(Infallible, PhantomData<fn() -> T>);
-impl<T: Copy + Ord + Zero> Monoid for Additive<T> {
+impl<T: Copy + Zero> Monoid for Additive<T> {
     type T = T;
     fn op(a: Self::T, b: Self::T) -> Self::T { a + b }
+    fn e() -> Self::T { T::zero() }
+}
+
+#[derive(Clone)]
+pub struct BitOr<T>(Infallible, PhantomData<fn() -> T>);
+impl<T: Copy + Ord + Zero + ops::BitOr<Output=T>> Monoid for BitOr<T> {
+    type T = T;
+    fn op(a: Self::T, b: Self::T) -> Self::T { a | b }
     fn e() -> Self::T { T::zero() }
 }
 

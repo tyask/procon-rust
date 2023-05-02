@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 use std::{*, mem::swap};
 use crate::common::*;
+use super::graph::Graph;
+
+// CAP(fumin::graph)
 
 // Lowest Common Ancestor 
 pub struct Lca {

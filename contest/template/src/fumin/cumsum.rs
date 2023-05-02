@@ -4,8 +4,7 @@ use num::Zero;
 use crate::common::*;
 use super::range_bounds_ex::RangeBoundsEx;
 
-// CAP(ex::common::range_bounds_ex)
-
+// CAP(fumin::range_bounds_ex)
 pub struct CumSum<N> { pub s: Vec<N> }
 impl<N: SimplePrimInt + Zero> CumSum<N> {
     pub fn new(v: &Vec<N>) -> Self {

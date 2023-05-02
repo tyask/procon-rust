@@ -1,2 +1,2 @@
 mod common;
-mod ex;
+mod fumin;

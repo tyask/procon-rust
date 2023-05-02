@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 use std::{*, iter::FromIterator, ops::{AddAssign, Sub, SubAssign, RangeBounds}};
 use ::num::Zero;
-use crate::{common::*, ex::common::range_bounds_ex::RangeBoundsEx};
+use crate::common::*;
+use super::range_bounds_ex::RangeBoundsEx;
 
-// CAP(ex::common::range_bounds_ex)
+// CAP(fumin::range_bounds_ex)
 
 pub trait E:
       Clone

@@ -6,16 +6,16 @@ use crate::{common::*, chmin};
 pub struct Edge {
     pub from: us,
     pub to:   us,
-    pub cost: is
+    pub cost: i64
 }
 pub struct Dijkstra {
     pub g: Vec<Vec<Edge>>,
-    pub dist: Vec<is>,
+    pub dist: Vec<i64>,
     pub prev: Vec<us>,
 }
 
 impl Edge {
-    pub fn new(from: us, to: us, cost: is) -> Edge { Edge { from: from, to: to, cost: cost } }
+    pub fn new(from: us, to: us, cost: i64) -> Edge { Edge { from: from, to: to, cost: cost } }
     pub fn reverse(self) -> Edge { Self::new(self.to, self.from, self.cost) }
 }
 
@@ -24,10 +24,10 @@ impl Dijkstra {
     pub fn add(&mut self, e: Edge) -> &mut Self { self.g[e.from].push(e); self }
     pub fn add2(&mut self, e: Edge) -> &mut Self { self.add(e).add(e.reverse()) }
 
-    pub fn run(&mut self, s: us) -> &Vec<is> {
-        type P = (is, us); // cost, node
+    pub fn run(&mut self, s: us) -> &Vec<i64> {
+        type P = (i64, us); // cost, node
 
-        self.dist = vec![is::INF; self.dist.len()];
+        self.dist = vec![i64::INF; self.dist.len()];
         self.prev = vec![us::INF; self.prev.len()];
 
         let g = &self.g;

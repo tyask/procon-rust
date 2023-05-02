@@ -34,7 +34,11 @@ pub trait SimplePrimInt:
         + DivAssign
         + Default
         + PartialEq
-{}
+        + Zero
+        + One
+{
+    fn two() -> Self { Self::one() + Self::one() }
+}
  
 pub trait ExPrimInt: SimplePrimInt
         + Rem<Output=Self>
@@ -67,6 +71,7 @@ pub trait ToIs   { fn is(self) -> is; }
 pub trait ToI64  { fn i64(self) -> i64; }
 pub trait ToF64  { fn f64(self) -> f64; }
 pub trait ToU8   { fn u8(self) -> u8; }
+pub trait ToU32  { fn u32(self) -> u32; }
 pub trait ToChar { fn char(self) -> char; }
 
 impl<T: IntoT<us>>   ToUs   for T { fn us(self)   -> us   { self.into_t() } }
@@ -74,6 +79,7 @@ impl<T: IntoT<is>>   ToIs   for T { fn is(self)   -> is   { self.into_t() } }
 impl<T: IntoT<i64>>  ToI64  for T { fn i64(self)  -> i64  { self.into_t() } }
 impl<T: IntoT<f64>>  ToF64  for T { fn f64(self)  -> f64  { self.into_t() } }
 impl<T: IntoT<u8>>   ToU8   for T { fn u8(self)   -> u8   { self.into_t() } }
+impl<T: IntoT<u32>>  ToU32  for T { fn u32(self)  -> u32  { self.into_t() } }
 impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
 impl IntoT<us>   for char  { fn into_t(self) -> us   { self as us } }
 impl IntoT<is>   for char  { fn into_t(self) -> is   { self as is } }
@@ -91,10 +97,6 @@ pub trait Inf {
 impl Inf for us  {
     const INF: Self = std::usize::MAX / 4;
     const MINF: Self = 0;
-}
-impl Inf for is  {
-    const INF: Self = std::isize::MAX / 4;
-    const MINF: Self = -Self::INF;
 }
 impl Inf for i64 {
     const INF: Self = std::i64::MAX / 4;
@@ -127,23 +129,30 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
 #[macro_export] macro_rules! div   { ($a:expr,$b:expr) => { { let v = $b; $a /= v; } } }
 #[macro_export] macro_rules! rem   { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
 
-pub fn abs_diff<N: SimplePrimInt>     (n1: N, n2: N)       -> N { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N { while b > N::from_t(0) { let c = b; b = a % b; a = c; } a }
-pub fn lcm<N: ExPrimInt> (a: N, b: N)         -> N { if a==N::from_t(0) || b==N::from_t(0) { N::from_t(0) } else { a / gcd(a,b) * b }}
+pub fn abs_diff(n1: us, n2: us) -> us { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
+pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N {
+    while b > N::zero() { let c = b; b = a % b; a = c; } a
+}
+pub fn lcm<N: ExPrimInt> (a: N, b: N) -> N {
+    if a.is_zero() || b.is_zero() { N::zero() } else { a / gcd(a,b) * b }
+}
 pub fn floor<N: SimplePrimInt>(a: N, b: N) -> N { a / b }
-pub fn ceil<N: SimplePrimInt+One>(a: N, b: N) -> N { (a + b - N::one()) / b }
-pub fn floor_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
+pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
+pub fn floor_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
     if a>=N::zero() { floor(a, b) } else { -ceil(-a, b) }
 }
-pub fn ceil_s<N: SimplePrimInt+Zero+One+Neg<Output=N>> (a: N, b: N) -> N {
+pub fn ceil_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
     if a>=N::zero() { ceil(a, b) } else { -floor(-a, b) }
 }
 
 pub fn safe_mod<N: ExPrimInt> (n: N, m: N) -> N { (n % m + m) % m }
-pub fn sumae  <N: SimplePrimInt+FromT<us>>(n: N, a: N, e: N) -> N { n * (a + e) / N::from_t(2) }
-pub fn sumad  <N: SimplePrimInt+FromT<us>>(n: N, a: N, d: N) -> N { n * (N::from_t(2) * a + (n - N::from_t(1)) * d) / N::from_t(2) }
-pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> usize { let mut d = 0; while n > N::from_t(0) { d+=1; n/=N::from_t(10); } d }
-fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
+pub fn sumae<N: SimplePrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::two() }
+pub fn sumad<N: SimplePrimInt>(n: N, a: N, d: N) -> N { n * (N::two() * a + (n - N::one()) * d) / N::two() }
+pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> us {
+    let mut d = 0;
+    while n > N::zero() { d+=1; n/=N::from_t(10); } d
+}
+pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
     if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
 }
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
@@ -225,136 +234,6 @@ pub trait BSetTrait<T> {
 impl<T:Ord> BSetTrait<T> for bset<T> {
     fn lower_bound(&self, t: &T) -> Option<&T> { self.range(t..).next() }
     fn upper_bound(&self, t: &T) -> Option<&T> { self.range((Bound::Excluded(t), Bound::Unbounded)).next() }
-}
-
-// Graph
-#[derive(Clone,Debug)]
-pub struct Graph(pub Vec<Vec<us>>);
-impl Graph {
-    pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n];
-        uv.iter().for_each(|&(u,v)|g[u].push(v));
-        Self(g)
-    }
-    pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n];
-        uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
-        Self(g)
-    }
-    pub fn tree(n: us, uv: &Vec<(us, us)>) -> Self {
-        Self::undigraph(n, uv)
-    }
-    pub fn len(&self) -> us { self.0.len() }
-    pub fn rev(&self) -> Self {
-        let ruv = self.0.iter().enumerate()
-            .flat_map(|(i,v)|v.iter().map(move |&j|(j,i))).cv();
-        Self::digraph(self.len(), &ruv)
-    }
-    pub fn bfs(&self, s: us) -> Vec<us> {
-        let mut d = vec![us::INF; self.len()];
-        d[s] = 0;
-        let mut que = deque::new();
-        que.push_back(s);
-        while let Some(a) = que.pop_front() {
-            for &b in &self[a] {
-                if d[b] > d[a] + 1 {
-                    d[b] = d[a] + 1;
-                    que.push_back(b);
-                }
-            }
-        }
-        d
-    }
-}
-impl<T: IntoT<us>> Index<T> for Graph {
-    type Output = Vec<us>;
-    fn index(&self, i: T) -> &Self::Output { &self.0[i.into_t()] }
-}
-impl<T: IntoT<us>> IndexMut<T> for Graph {
-    fn index_mut(&mut self, i: T) -> &mut Self::Output { &mut self.0[i.into_t()] }
-}
-
-// Pt
-#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash,PartialOrd,Ord,Default)]
-pub struct Pt<N> { pub x: N, pub y: N }
-
-impl<N> Pt<N> {
-    pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Pt<N> { Pt{x:x.into_t(), y:y.into_t()} }
-    pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
-    pub fn tuple(self) -> (N, N) { (self.x, self.y) }
-}
-impl<N: SimplePrimInt> Pt<N> {
-    pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
-    pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
-}
-impl<N: SimplePrimInt+FromT<is>> Pt<N> {
-    pub fn dir4() -> Vec<Pt<N>> {
-        vec![Pt::is(0,1), Pt::is(0,!0), Pt::is(1,0), Pt::is(!0,0)]
-    }
-    pub fn dir8() -> Vec<Pt<N>> {
-        vec![
-            Pt::is(0,1), Pt::is(0,!0), Pt::is(1, 0), Pt::is(!0, 0),
-            Pt::is(1,1), Pt::is(1,!0), Pt::is(!0,1), Pt::is(!0,!0)
-            ]
-    }
-    fn is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
-}
-impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
-    pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
-}
-impl<N: Wrapping> Wrapping for Pt<N> {
-    fn wraping_add(self, a: Self) -> Self { Self::of(self.x.wraping_add(a.x), self.y.wraping_add(a.y)) }
-}
-
-pub type Radian = f64;
-impl Pt<f64> {
-    pub fn rot(self, r: Radian) -> Pt<f64> {
-        let (x, y) = (self.x, self.y);
-        Self::new(r.cos()*x-r.sin()*y, r.sin()*x+r.cos()*y) // 反時計回りにr度回転(rはradian)
-    }
-}
-impl<N: SimplePrimInt+fmt::Display> fmt::Display  for Pt<N> { fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{} {}", self.x, self.y) } }
-impl<N: SimplePrimInt+fmt::Display> Fmt           for Pt<N> { fn fmt(&self) -> String { format!("{} {}", self.x, self.y) } }
-impl<N: SimplePrimInt> AddAssign<Pt<N>> for Pt<N> { fn add_assign(&mut self, rhs: Pt<N>) { self.x = self.x + rhs.x; self.y = self.y + rhs.y; } }
-impl<N: SimplePrimInt> SubAssign<Pt<N>> for Pt<N> { fn sub_assign(&mut self, rhs: Pt<N>) { self.x = self.x - rhs.x; self.y = self.y - rhs.y; } }
-impl<N: SimplePrimInt> MulAssign<N>     for Pt<N> { fn mul_assign(&mut self, rhs: N) { self.x *= rhs; self.y *= rhs; } }
-impl<N: SimplePrimInt> DivAssign<N>     for Pt<N> { fn div_assign(&mut self, rhs: N) { self.x /= rhs; self.y /= rhs; } }
-impl<N: SimplePrimInt> Add<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn add(mut self, rhs: Pt<N>) -> Self::Output { self += rhs; self } }
-impl<N: SimplePrimInt> Sub<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn sub(mut self, rhs: Pt<N>) -> Self::Output { self -= rhs; self } }
-impl<N: SimplePrimInt> Mul<N>           for Pt<N> { type Output = Pt<N>; fn mul(mut self, rhs: N) -> Self::Output { self *= rhs; self } }
-impl<N: SimplePrimInt> Div<N>           for Pt<N> { type Output = Pt<N>; fn div(mut self, rhs: N) -> Self::Output { self /= rhs; self } }
-impl<N: SimplePrimInt+FromT<is>> Neg    for Pt<N> { type Output = Pt<N>; fn neg(mut self) -> Self::Output { self *= N::from_t(-1); self } }
-impl<N: SimplePrimInt+Default> Sum      for Pt<N> { fn sum<I: Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::default(), |a, b| a + b) } }
-
-impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> proconio::source::Readable for Pt<N> {
-    type Output = Pt<N>;
-    fn read<R: io::BufRead, S: proconio::source::Source<R>>(source: &mut S) -> Self::Output {
-        Pt::new(N::read(source), N::read(source))
-    }
-}
-
-// Grid
-pub struct Grid<T> { pub raw: Vec<Vec<T>> }
-impl<T: Clone> Grid<T> {
-    pub fn from(v: &Vec<Vec<T>>) -> Grid<T> { Grid{raw: v.to_vec()} }
-    pub fn new(h: us, w: us, v: T) -> Grid<T> { Grid{raw: vec![vec![v; w]; h]} }
-    pub fn inp<N:SimplePrimInt+ToUs+ToIs>(&self, p: Pt<N>)    -> bool { self.inij(p.x, p.y) }
-    pub fn inij<N:SimplePrimInt+ToUs+ToIs>(&self, i: N, j: N) -> bool { 0<=i.is() && i.is()<self.raw.len().is() && 0<=j.is() && j.is()<self.raw[i.us()].len().is() }
-    pub fn int<N:SimplePrimInt+ToUs+ToIs>(&self, t: (N, N))   -> bool { self.inij(t.0, t.1) }
-}
-impl<T, N: SimplePrimInt+ToUs> Index<Pt<N>> for Grid<T> {
-    type Output = T;
-    fn index(&self, p: Pt<N>) -> &Self::Output { &self[p.tuple()] }
-}
-impl<T, N: SimplePrimInt+ToUs> IndexMut<Pt<N>> for Grid<T> {
-    fn index_mut(&mut self, p: Pt<N>) -> &mut Self::Output { &mut self[p.tuple()] }
-}
-impl<T, N: SimplePrimInt+ToUs> Index<(N,N)> for Grid<T> {
-    type Output = T;
-    fn index(&self, p: (N,N)) -> &Self::Output { &self.raw[p.0.us()][p.1.us()] }
-}
-impl<T, N: SimplePrimInt+ToUs> IndexMut<(N,N)> for Grid<T> {
-    fn index_mut(&mut self, p: (N,N)) -> &mut Self::Output { &mut self.raw[p.0.us()][p.1.us()] }
 }
 
 pub trait Identify {

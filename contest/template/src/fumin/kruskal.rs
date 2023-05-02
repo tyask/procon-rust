@@ -1,8 +1,7 @@
-
 #![allow(dead_code)]
-use crate::ex::common::unionfind::*;
+use super::unionfind::Unionfind;
 
-// CAP(ex::common::unionfind)
+// CAP(fumin::unionfind)
 
 #[derive(Clone,Copy,PartialEq,Eq,Hash)]
 pub struct Edge { pub u: usize, pub v: usize, pub cost: isize }
