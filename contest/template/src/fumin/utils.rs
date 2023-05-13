@@ -1,6 +1,8 @@
 #![allow(dead_code)]
-use std::*;
-use crate::common::*;
+use std::{*, ops::*};
+use num_traits::{Zero, One};
+
+use crate::{common::*, add};
 
 // 素数判定
 pub fn is_price(n: us) -> bool {
@@ -126,22 +128,62 @@ fn traveling_salesman(g: &Vec<Vec<i64>>) -> i64 {
 }
 
 // パスカルの三角形によりnCkを計算. O(n^2)
-pub struct Combination { m: Vec<Vec<us>>, }
-impl Combination {
-    pub fn new(n: impl IntoT<us>) -> Self {
-        let n = n.into_t();
-        let mut m = vec![vec![0; n+1]; n+1];
-        m[0][0] = 1;
+pub struct Combination<N>(Vec<Vec<N>>);
+impl<N: Copy+IntoT<us>+Zero+One+AddAssign> Combination<N> {
+    pub fn new(n: us) -> Self {
+        let mut m = vec![vec![N::zero(); n+1]; n+1];
+        m[0][0] = N::one();
         for i in 0..n { for j in 0..n {
-            m[i+1][j]   += m[i][j];
-            m[i+1][j+1] += m[i][j];
+            add!(m[i+1][j],   m[i][j]);
+            add!(m[i+1][j+1], m[i][j]);
         }}
-        Self { m }
+        Self(m)
     }
 
-    pub fn nk<N: SimplePrimInt + IntoT<us> + FromT<us>>(&self, n: N, k: N) -> us {
-        if k < N::from_t(0) || k > n { 0 } else { self.m[n.into_t()][k.into_t()] }
+    pub fn nk<T: IntoT<us>+Zero+Ord>(&self, n: T, k: T) -> N {
+        if k < T::zero() || k > n { N::zero() } else { self.0[n.us()][k.us()] }
     }
+}
+
+pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
+    // 再帰が深いなどスタックサイズが足りない場合はこのメソッドを利用する.
+    std::thread::Builder::new()
+        .stack_size(1024*1024*1024)
+        .spawn(f)
+        .unwrap()
+        .join().unwrap();
+}
+
+pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N {
+    while b > N::zero() { let c = b; b = a % b; a = c; } a
+}
+pub fn lcm<N: ExPrimInt> (a: N, b: N) -> N {
+    if a.is_zero() || b.is_zero() { N::zero() } else { a / gcd(a,b) * b }
+}
+pub fn floor_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
+    if a>=N::zero() { floor(a, b) } else { -ceil(-a, b) }
+}
+pub fn ceil_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
+    if a>=N::zero() { ceil(a, b) } else { -floor(-a, b) }
+}
+pub fn safe_mod<N: ExPrimInt> (n: N, m: N) -> N { (n % m + m) % m }
+pub fn sumae<N: SimplePrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::two() }
+pub fn sumad<N: SimplePrimInt>(n: N, a: N, d: N) -> N { n * (N::two() * a + (n - N::one()) * d) / N::two() }
+pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> us {
+    let mut d = 0;
+    while n > N::zero() { d+=1; n/=N::from_t(10); } d
+}
+pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
+pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
+    if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
+}
+
+// io
+// インタラクティブ問題ではこれをinputに渡す
+// let mut src = from_stdin();
+// input! {from &mut src, n: usize}
+pub fn from_stdin() -> proconio::source::line::LineSource<io::BufReader<io::Stdin>> {
+    proconio::source::line::LineSource::new(io::BufReader::new(io::stdin()))
 }
 
 // CAP(IGNORE_BELOW)

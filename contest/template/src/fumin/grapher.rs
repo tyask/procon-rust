@@ -6,7 +6,7 @@ use super::graph::Graph;
 
 impl Graph {
     // 最短距離を2度計算することで木の直径を求める. (u:Node1, v:Node2, d:Distance)
-    fn diameter(&self) -> (us, us, us) {
+    pub fn diameter(&self) -> (us, us, us) {
         let u = self.bfs(0).iter().enumerate().max_by_key(|p|p.1).map(|p|p.0).unwrap();
         let (v, &d) = self.bfs(u).iter().enumerate().max_by_key(|p|p.1).unwrap();
         (u, v, d)
@@ -16,7 +16,7 @@ impl Graph {
 impl Graph {
     // 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.
     // g: グラフを表す隣接リスト
-    fn colorize_bipartite(&self) -> Result<Vec<is>,()> {
+    pub fn colorize_bipartite(&self) -> Result<Vec<is>,()> {
         let mut col = vec![-1; self.len()];
         for i in 0..self.len() {
             if col[i] >= 0 { continue; }
@@ -34,7 +34,7 @@ impl Graph {
 
 impl Graph {
     // 強連結成分分解(scc)
-    fn scc(&self) -> Vec<Vec<us>> {
+    pub fn scc(&self) -> Vec<Vec<us>> {
         let n = self.len();
 
         // 帰りがけ順に点を記録する->t
@@ -80,20 +80,49 @@ impl Graph {
     }
 }
 
-pub fn topological_sort(g: &Graph) -> Option<Vec<us>> {
-    let n = g.len();
+impl Graph {
+    pub fn topological_sort(&self) -> Option<Vec<us>> {
+        let n = self.len();
 
-    let mut deg = vec![0; n];
-    for v in 0..n { for &u in &g[v] { deg[u] += 1; }}
+        let mut deg = vec![0; n];
+        for v in 0..n { for &u in &self[v] { deg[u] += 1; }}
 
-    let mut que = deque::new();
-    for v in 0..n { if deg[v] == 0 { que.push_back(v); }}
+        let mut que = deque::new();
+        for v in 0..n { if deg[v] == 0 { que.push_back(v); }}
 
-    let mut ret = Vec::with_capacity(n);
-    while let Some(v) = que.pop_front() {
-        ret.push(v);
-        for &u in &g[v] { deg[u]-=1; if deg[u]==0 { que.push_back(u); }}
+        let mut ret = Vec::with_capacity(n);
+        while let Some(v) = que.pop_front() {
+            ret.push(v);
+            for &u in &self[v] { deg[u]-=1; if deg[u]==0 { que.push_back(u); }}
+        }
+
+        if ret.len() == n { Some(ret) } else { None }
     }
+}
 
-    if ret.len() == n { Some(ret) } else { None }
+impl Graph {
+    // DAGの最長経路を求める. O(N)
+    pub fn longest_dist(&self) -> us {
+        let n = self.len();
+        let mut dp = vec![0; n]; // dp[i]:=iからの最長経路
+        let mut vis = vec![false; n];
+        for v in 0..n {
+            if vis[v] { continue; }
+            let mut st = deque::new();
+            st.push_back((v,true));
+            while let Some((v,pre)) = st.pop_back() {
+                if pre {
+                    if vis[v] {
+                        if dp[v]==0 { return us::INF; } else { continue; }
+                    }
+                    vis[v] = true;
+                    st.push_back((v,false));
+                    for &u in &self[v] { st.push_back((u,true)); }
+                } else {
+                    dp[v] = self[v].iter().map(|&u|dp[u]).max().unwrap_or_default() + 1;
+                }
+            }
+        }
+        return dp.vmax();
+    }
 }

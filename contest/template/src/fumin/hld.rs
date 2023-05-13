@@ -50,13 +50,13 @@ impl HLD {
         let mut vertex = vec![n; n];
         for (i, &l) in left.iter().enumerate() { vertex[l] = i; }
 
-        HLD {
-            g: g,
-            roots: roots,
-            parent: parent,
-            left: left,
-            right: right,
-            vertex: vertex,
+        Self {
+            g,
+            roots,
+            parent,
+            left,
+            right,
+            vertex,
         }
     }
 

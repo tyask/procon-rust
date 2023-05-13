@@ -98,6 +98,10 @@ impl Inf for us  {
     const INF: Self = std::usize::MAX / 4;
     const MINF: Self = 0;
 }
+impl Inf for is {
+    const INF: Self = std::isize::MAX / 4;
+    const MINF: Self = -Self::INF;
+}
 impl Inf for i64 {
     const INF: Self = std::i64::MAX / 4;
     const MINF: Self = -Self::INF;
@@ -111,15 +115,6 @@ impl Wrapping for is  { fn wraping_add(self, a: Self) -> Self { self.wrapping_ad
 impl Wrapping for i64 { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
 
 // Utilities
-pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
-    // 再帰が深いなどスタックサイズが足りない場合はこのメソッドを利用する.
-    std::thread::Builder::new()
-        .stack_size(1024*1024*1024)
-        .spawn(f)
-        .unwrap()
-        .join().unwrap();
-}
-
 #[macro_export] macro_rules! or    { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
 #[macro_export] macro_rules! chmax { ($a:expr,$b:expr) => { { let v = $b; if $a < v { $a = v; true } else { false } } } }
 #[macro_export] macro_rules! chmin { ($a:expr,$b:expr) => { { let v = $b; if $a > v { $a = v; true } else { false } } } }
@@ -130,31 +125,8 @@ pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
 #[macro_export] macro_rules! rem   { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
 
 pub fn abs_diff(n1: us, n2: us) -> us { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
-pub fn gcd<N: ExPrimInt> (mut a: N, mut b: N) -> N {
-    while b > N::zero() { let c = b; b = a % b; a = c; } a
-}
-pub fn lcm<N: ExPrimInt> (a: N, b: N) -> N {
-    if a.is_zero() || b.is_zero() { N::zero() } else { a / gcd(a,b) * b }
-}
 pub fn floor<N: SimplePrimInt>(a: N, b: N) -> N { a / b }
 pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
-pub fn floor_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
-    if a>=N::zero() { floor(a, b) } else { -ceil(-a, b) }
-}
-pub fn ceil_s<N: SimplePrimInt+Neg<Output=N>> (a: N, b: N) -> N {
-    if a>=N::zero() { ceil(a, b) } else { -floor(-a, b) }
-}
-
-pub fn safe_mod<N: ExPrimInt> (n: N, m: N) -> N { (n % m + m) % m }
-pub fn sumae<N: SimplePrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::two() }
-pub fn sumad<N: SimplePrimInt>(n: N, a: N, d: N) -> N { n * (N::two() * a + (n - N::one()) * d) / N::two() }
-pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> us {
-    let mut d = 0;
-    while n > N::zero() { d+=1; n/=N::from_t(10); } d
-}
-pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
-    if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
-}
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 
@@ -189,10 +161,16 @@ impl<T> OrdIterTrait  for T where T: Iterator, Self::Item: Ord { }
 pub trait VecFill<T>  { fn fill(&mut self, t: T); }
 pub trait VecOrDef<T> { fn or_def(&self, i: us) -> T; }
 pub trait VecOr<T>    { fn or<'a>(&'a self, i: us, v: &'a  T) -> &'a T; }
+pub trait VecMax<T>    { fn vmax(&self) -> T; }
+pub trait VecMin<T>    { fn vmin(&self) -> T; }
+pub trait VecSum<T>    { fn sum(&self) -> T; }
 
-impl<T:Clone+Copy> VecFill<T>          for Vec<T> { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t); } }
-impl<T:Clone+Copy+Default> VecOrDef<T> for Vec<T> { fn or_def(&self, i: us) -> T { self.get(i).cloned().unwrap_or_default() } }
-impl<T:Clone+Copy> VecOr<T>            for Vec<T> { fn or<'a>(&'a self, i: us, v: &'a T) -> &'a T  { self.get(i).unwrap_or(v) } }
+impl<T:Clone>         VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
+impl<T:Clone+Default> VecOrDef<T> for [T] { fn or_def(&self, i: us) -> T { self.get(i).cloned().unwrap_or_default() } }
+impl<T:Clone+Copy>    VecOr<T>    for [T] { fn or<'a>(&'a self, i: us, v: &'a T) -> &'a T  { self.get(i).unwrap_or(v) } }
+impl<T:Clone+Ord>     VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
+impl<T:Clone+Ord>     VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
+impl<T:Clone+Sum<T>>  VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
@@ -278,14 +256,6 @@ pub trait ToC: IntoT<u8> + Copy {
     fn to_c_by(self, ini: char) -> char { (ini.u8() + self.u8()).char() }
 }
 impl<T: IntoT<u8>+Copy> ToC for T {}
-
-// io
-// インタラクティブ問題ではこれをinputに渡す
-// let mut src = from_stdin();
-// input! {from &mut src, n: usize}
-pub fn from_stdin() -> proconio::source::line::LineSource<io::BufReader<io::Stdin>> {
-    proconio::source::line::LineSource::new(io::BufReader::new(io::stdin()))
-}
 
 trait Joiner { fn join(self, sep: &str) -> String; }
 impl<It: Iterator<Item=String>> Joiner for It { fn join(self, sep: &str) -> String { self.collect::<Vec<_>>().join(sep) } }

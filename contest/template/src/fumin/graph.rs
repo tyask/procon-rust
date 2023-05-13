@@ -16,9 +16,6 @@ impl Graph {
         uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
         Self(g)
     }
-    pub fn tree(n: us, uv: &Vec<(us, us)>) -> Self {
-        Self::undigraph(n, uv)
-    }
     pub fn len(&self) -> us { self.0.len() }
     pub fn rev(&self) -> Self {
         let ruv = self.0.iter().enumerate()
