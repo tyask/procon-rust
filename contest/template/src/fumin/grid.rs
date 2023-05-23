@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 use std::ops::{Index, IndexMut};
+use itertools::iproduct;
+
 use crate::common::*;
 use super::pt::Pt;
 
@@ -9,9 +11,16 @@ pub struct Grid<T>(pub Vec<Vec<T>>);
 
 impl<T: Clone> Grid<T> {
     pub fn new(h: us, w: us, v: T) -> Self { Self::from(&vec![vec![v; w]; h]) }
-    pub fn inp(&self, p: Pt<us>) -> bool { p.x < self.h() && p.y < self.w() }
+}
+impl<T> Grid<T> {
     pub fn h(&self) -> us { self.0.len() }
     pub fn w(&self) -> us { self.0[0].len() }
+    pub fn inp(&self, p: Pt<us>) -> bool { p.x < self.h() && p.y < self.w() }
+}
+impl<T: Clone+Eq> Grid<T> {
+    pub fn position(&self, t: &T) -> Option<Pt<us>> {
+        iproduct!(0..self.h(), 0..self.w()).into_iter().map(|(i,j)|Pt::<us>::new(i,j)).filter(|&p|self[p]==*t).next()
+    }
 }
 impl<T: Clone> From<&Vec<Vec<T>>> for Grid<T> {
     fn from(v: &Vec<Vec<T>>) -> Self { Self(v.to_vec()) }
@@ -40,7 +49,7 @@ impl Grid<char> {
         while let Some(v) = que.pop_front() {
             for d in Pt::<us>::dir4() {
                 let nv = v.wraping_add(d);
-                if self.inp(nv) && self[nv]=='.' && m[nv]==us::INF {
+                if self.inp(nv) && self[nv]!='#' && m[nv]==us::INF {
                     m[nv] = m[v]+1;
                     que.push_back(nv);
                 }

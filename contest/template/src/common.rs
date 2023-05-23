@@ -72,6 +72,7 @@ pub trait ToI64  { fn i64(self) -> i64; }
 pub trait ToF64  { fn f64(self) -> f64; }
 pub trait ToU8   { fn u8(self) -> u8; }
 pub trait ToU32  { fn u32(self) -> u32; }
+pub trait ToI32  { fn i32(self) -> i32; }
 pub trait ToChar { fn char(self) -> char; }
 
 impl<T: IntoT<us>>   ToUs   for T { fn us(self)   -> us   { self.into_t() } }
@@ -80,11 +81,13 @@ impl<T: IntoT<i64>>  ToI64  for T { fn i64(self)  -> i64  { self.into_t() } }
 impl<T: IntoT<f64>>  ToF64  for T { fn f64(self)  -> f64  { self.into_t() } }
 impl<T: IntoT<u8>>   ToU8   for T { fn u8(self)   -> u8   { self.into_t() } }
 impl<T: IntoT<u32>>  ToU32  for T { fn u32(self)  -> u32  { self.into_t() } }
+impl<T: IntoT<i32>>  ToI32  for T { fn i32(self)  -> i32  { self.into_t() } }
 impl<T: IntoT<char>> ToChar for T { fn char(self) -> char { self.into_t() } }
 impl IntoT<us>   for char  { fn into_t(self) -> us   { self as us } }
 impl IntoT<is>   for char  { fn into_t(self) -> is   { self as is } }
 impl IntoT<u8>   for char  { fn into_t(self) -> u8   { self as u8 } }
 impl IntoT<u32>  for char  { fn into_t(self) -> u32  { self as u32 } }
+impl IntoT<i32>  for char  { fn into_t(self) -> i32  { self as i32 } }
 impl IntoT<u64>  for char  { fn into_t(self) -> u64  { self as u64 } }
 impl IntoT<i64>  for char  { fn into_t(self) -> i64  { self as i64 } }
 impl IntoT<char> for char  { fn into_t(self) -> char { self } }

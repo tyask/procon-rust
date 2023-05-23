@@ -60,3 +60,6 @@ impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> p
         Pt::new(N::read(source), N::read(source))
     }
 }
+impl<T> From<(T, T)> for Pt<T> {
+    fn from(t: (T, T)) -> Self { Self::of(t.0, t.1) }
+}
