@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [package.metadata.cargo-compete.bin]
-a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" }
+a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_c" }
 
 [[bin]]
 name = "a"

@@ -2,7 +2,7 @@
 use std::{*, collections::*, ops::*, cmp::*, iter::*, io::stdin};
 use itertools::Itertools;
 use ::num::{Zero, One};
-use proconio::{input, fastout, is_stdin_empty};
+use proconio::{input, fastout};
 use common::*;
 
 fn main() {
@@ -12,11 +12,12 @@ fn main() {
 #[fastout]
 fn solve() {
     // CONTEST(abc200-a)
-    input! {n: us}
-    println!("{}", (n+99)/100);
 }
 
 // #CAP(fumin::modint)
+pub mod fumin {
+}
+
 pub mod common {
 #![allow(dead_code, unused_imports, unused_macros, non_snake_case, non_camel_case_types)]
 use std::{*, ops::*, collections::*, iter::Sum};
@@ -328,3 +329,4 @@ pub fn NO(b: bool) -> &'static str { YES(!b) }
 
 
 }
+

@@ -15,10 +15,10 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Test Bash",
-			"command": "/usr/bin/bash",
+			"label": "Cargo Compete Reflesh",
+			"command": "python",
 			"args": [
-				"../../tools/test.sh",
+				"../../tools/compete_refresh.py",
 				"${file}",
 			],
 			"options": {
@@ -26,7 +26,6 @@
 			},
 			"problemMatcher": []
 		},
-
 		{
 			"label": "Cargo Compete DT",
 			"command": "python",
