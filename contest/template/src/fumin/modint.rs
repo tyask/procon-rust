@@ -13,7 +13,7 @@ pub trait Modules: Clone + Copy + PartialEq { const MOD: i64; }
 impl Modules for Modules1000000007 { const MOD: i64 = 1_000_000_007; }
 impl Modules for Modules998244353  { const MOD: i64 =   998_244_353; }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Modint<M> {
     val: i64,
     phantom: PhantomData<dyn Fn() -> M>,

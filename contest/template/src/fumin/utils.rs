@@ -111,7 +111,7 @@ pub fn powmod<N: ExPrimInt+::num::Zero+::num::One+ops::BitAnd<Output=N>+ops::Shr
 // g[u][v] := u->vの距離 (gは隣接行列とする)
 // 計算量は、頂点数をnとしてO(n^2*2^n)
 // 全頂点を巡回して0に戻る値はdp[(1<<n)-1][0]で取得する.
-fn traveling_salesman(g: &Vec<Vec<i64>>, s: us) -> Vec<Vec<us>> {
+fn traveling_salesman(g: &Vec<Vec<i64>>, s: us) -> Vec<Vec<i64>> {
     use itertools::iproduct;
     use crate:: chmin;
 

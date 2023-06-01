@@ -15,6 +15,31 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "Test Bash",
+			"command": "/usr/bin/bash",
+			"args": [
+				"../../tools/test.sh",
+				"${file}",
+			],
+			"options": {
+				"cwd": "${fileDirname}/../.."
+			},
+			"problemMatcher": []
+		},
+
+		{
+			"label": "Cargo Compete DT",
+			"command": "python",
+			"args": [
+				"../../tools/compete_dt.py",
+				"${file}",
+			],
+			"options": {
+				"cwd": "${fileDirname}/../.."
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "Cargo Capture",
 			"command": "cargo",
 			"args": [

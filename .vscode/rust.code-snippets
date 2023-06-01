@@ -18,6 +18,9 @@
 	"i64": {
 		"prefix": "i", "body": [ "i64" ],
 	},
+	"input": {
+		"prefix": "in", "body": [ "input! {$1}" ],
+	},
 	"println!(\"\")": {
 		"prefix": "p", "body": [ "println!(\"$1\");" ],
 	},

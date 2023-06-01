@@ -103,7 +103,7 @@ impl <M: Monoid> From<&Vec<M::T>> for SegTree<M> {
         let mut dat = vec![M::e(); 2 * size];
         dat[size..][..n].clone_from_slice(v);
         let mut s = SegTree { n, log, size, dat };
-        for i in (0..size-1).rev() { s.update(i); }
+        for i in (1..size).rev() { s.update(i); }
         s
     }
 }

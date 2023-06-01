@@ -3,7 +3,7 @@ use std::{*, ops::*, iter::Sum};
 use crate::common::*;
 
 // Pt
-#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash,PartialOrd,Ord,Default)]
+#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash,Default)]
 pub struct Pt<N> { pub x: N, pub y: N }
 
 impl<N> Pt<N> {
