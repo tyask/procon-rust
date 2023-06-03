@@ -33,25 +33,51 @@ def generate_problem_url(contest, problem):
     return 'https://atcoder.jp/contests/{0}/tasks/{0}_{1}'.format(contest, problem)
 
 def write_url_to_cargo(cargo, bin, url):
-    # a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" }
-    # pattern = re.compile('({}\s+=\s+\{\s+problem\s+=\s+")(.*?)("\s+\})'.format(bin))
-    pattern = re.compile('({}\s*=\s*{{\s*problem\s*=\s*")(?P<URL>.*?)("\s*}})'.format(bin))
+    # [package.metadata.cargo-compete.bin]
+    # a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" } (*)
+    # 
+    # [[bin]]
+    # name = "a" (*)
+    # path = "src/bin/a.rs" (*)
+    #
+    # (*)の行を置換する
+    p1 = re.compile('\w+\s*=\s*{\s*problem\s*=\s*"(?P<URL>.*?)"\s*}')
+    p2 = re.compile('name\s*=\s*"(?P<NAME>.*?)"')
+    p3 = re.compile('path\s*=\s*"(?P<PATH>.*?)"')
+    pbin = re.compile('[[bin]]')
     tmp = 'Cargo_tmp.toml'
-    changed = False
+    need_download_testcases = False
+    is_bin_started = False
     with open(tmp, 'w') as w:
         with open(cargo, 'r') as f:
             for line in f.readlines():
-                m = pattern.search(line)
-                if m:
-                    prev = m.group("URL")
+
+                if pbin.search(line):
+                    is_bin_started = True
+
+                m1 = p1.search(line)
+                m2 = p2.search(line)
+                m3 = p3.search(line)
+
+                if m1:
+                    prev = m1.group("URL")
                     print("Prev URL: {}".format(prev))
-                    changed = prev != url
-                    w.write(pattern.sub('\\1' + url + '\\3', line))
+                    w.write('{} = {{ problem = "{}" }}\n'.format(bin, url))
+                    need_download_testcases = prev != url
+                elif is_bin_started and m2:
+                    prev = m2.group("NAME")
+                    print("Prev NAME: {}".format(prev))
+                    w.write('name = "{}"\n'.format(bin))
+                elif m3:
+                    prev = m3.group("PATH")
+                    print("Prev PATH: {}".format(prev))
+                    w.write('path = "src/bin/{}.rs"\n'.format(bin))
                 else:
                     w.write(line)
+
     shutil.move(tmp, cargo)
-    return changed
-    
+    return need_download_testcases
+
 def cargo_compete_downlowad_test():
     subprocess.run('cargo compete retrieve t --overwrite', shell=True)
 
@@ -79,6 +105,7 @@ def main():
     else:
         print('Already Downloaded testcases')
 
+    print('Executing compete test')
     cargo_compete_test(bin)
 
 if __name__ == '__main__':

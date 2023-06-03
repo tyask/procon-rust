@@ -2,7 +2,7 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Cargo Compete Test",
+			"label": "Cargo Compete TEST",
 			"command": "cargo",
 			"args": [
 				"compete",
@@ -15,10 +15,10 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Cargo Compete Reflesh",
+			"label": "Cargo Compete DT",
 			"command": "python",
 			"args": [
-				"../../tools/compete_refresh.py",
+				"../../tools/compete_dt.py",
 				"${file}",
 			],
 			"options": {
@@ -26,11 +26,12 @@
 			},
 			"problemMatcher": []
 		},
+
 		{
-			"label": "Cargo Compete DT",
+			"label": "Cargo Compete REFLESH",
 			"command": "python",
 			"args": [
-				"../../tools/compete_dt.py",
+				"../../tools/compete_refresh.py",
 				"${file}",
 			],
 			"options": {

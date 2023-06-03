@@ -7,6 +7,7 @@ fn main() {
     solve();
 }
 
+// CONTEST(abcXXX-a)
 #[fastout]
 fn solve() {
 }
