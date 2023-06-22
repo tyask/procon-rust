@@ -3,7 +3,7 @@ use std::*;
 use crate::common::*;
 use super::tree::Tree;
 
-// CAP(fumin::graph)
+// CAP(fumin::tree)
 
 pub struct EulerTour {
     pub vin:  Vec<us>, // 頂点iを最初に通った時のpathのindex

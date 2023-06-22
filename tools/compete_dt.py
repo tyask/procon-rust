@@ -14,17 +14,17 @@ Rustのソースファイルに以下のような文字列を埋め込むこと�
 
 def lookup_problem(src):
     pattern = re.compile('CONTEST\((?P<CONTEST>.*?)-(?P<PROBLEM>.*?)\)')
-    with open(src, 'r') as f:
+    with open(src, 'r', encoding='utf-8') as f:
         matched = [line for line in f.readlines() if pattern.search(line)]
         if not matched:
             return None
         m = pattern.search(matched[0])
         contest = m.group('CONTEST')
         problem = m.group('PROBLEM')
-        return (contest, problem)
+        return (contest, problem.lower())
 
 def lookup_bin(src):
-    return os.path.splitext(os.path.basename(src))[0]
+    return os.path.splitext(os.path.basename(src))[0].lower()
 
 def lookup_cargo(src):
     return os.path.normpath(os.path.join(os.path.dirname(src), '..', '..', 'Cargo.toml'))

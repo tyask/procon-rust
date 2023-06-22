@@ -7,7 +7,7 @@ use super::range_bounds_ex::RangeBoundsEx;
 // CAP(fumin::range_bounds_ex)
 pub struct CumSum<N> { pub s: Vec<N> }
 impl<N: SimplePrimInt + Zero> CumSum<N> {
-    pub fn new(v: &Vec<N>) -> Self {
+    pub fn new(v: &[N]) -> Self {
         let mut s = vec![N::zero(); v.len() + 1];
         for i in 0..v.len() { s[i+1] = s[i] + v[i]; }
         Self { s }

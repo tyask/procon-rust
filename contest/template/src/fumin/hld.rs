@@ -93,7 +93,9 @@ impl HLD {
             }
         }
     }
+}
 
+impl HLD {
     // aとbのLCA
     pub fn lca(&self, mut a: us, mut b: us) -> us {
         assert!(a < self.g.len() && b < self.g.len());

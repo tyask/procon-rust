@@ -15,14 +15,14 @@ pub struct Dijkstra {
 }
 
 impl Edge {
-    pub fn new(from: us, to: us, cost: i64) -> Edge { Edge { from: from, to: to, cost: cost } }
-    pub fn reverse(self) -> Edge { Self::new(self.to, self.from, self.cost) }
+    pub fn new(from: us, to: us, cost: i64) -> Self { Self { from, to, cost } }
+    pub fn rev(self) -> Self { let mut r = self.clone(); mem::swap(&mut r.from, &mut r.to); r }
 }
 
 impl Dijkstra {
     pub fn new(n: us) -> Self { Self { g: vec![vec![]; n], dist: vec![0;n], prev: vec![0;n] }}
     pub fn add(&mut self, e: Edge) -> &mut Self { self.g[e.from].push(e); self }
-    pub fn add2(&mut self, e: Edge) -> &mut Self { self.add(e).add(e.reverse()) }
+    pub fn add2(&mut self, e: Edge) -> &mut Self { self.add(e).add(e.rev()) }
 
     pub fn run(&mut self, s: us) -> &Vec<i64> {
         type P = (i64, us); // cost, node

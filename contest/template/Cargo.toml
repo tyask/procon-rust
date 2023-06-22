@@ -3,18 +3,6 @@ name = "template"
 version = "0.1.0"
 edition = "2018"
 
-[[bin]]
-name = "template-main"
-path = "src/main.rs"
-
-[[bin]]
-name = "cargo-capture"
-path = "src/capture/main.rs"
-
-[lib]
-name = "lib"
-path = "src/lib.rs"
-
 [dependencies]
 num = "=0.2.1"
 num-bigint = "=0.2.6"

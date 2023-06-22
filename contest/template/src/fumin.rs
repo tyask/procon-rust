@@ -1,6 +1,7 @@
 pub mod cumsum;
 pub mod dijkstra;
 pub mod grid;
+pub mod eratosthenes;
 pub mod euler_tour;
 pub mod fenwick_tree;
 pub mod fenwick_tree2d;

@@ -55,8 +55,8 @@ pub fn prime_fact(mut n: us) -> bmap<us, us> {
 pub fn compress<T:Clone+PartialEq+Ord>(v: &[T]) -> Vec<us> {
     use superslice::Ext;
     use itertools::Itertools;
-    let t = v.iter().cloned().sorted().dedup().collect_vec();
-    v.iter().map(|x|t.lower_bound(x)).collect_vec()
+    let t = v.iter().cloned().sorted().dedup().cv();
+    v.iter().map(|x|t.lower_bound(x)).cv()
 }
 
 // ランレングス圧縮

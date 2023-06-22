@@ -166,12 +166,14 @@ pub trait VecCount<T>  { fn count(&self, f: impl FnMut(&T)->bool) -> us; }
 pub trait VecMax<T>    { fn vmax(&self) -> T; }
 pub trait VecMin<T>    { fn vmin(&self) -> T; }
 pub trait VecSum<T>    { fn sum(&self) -> T; }
+pub trait VecStr<T>    { fn str(&self) -> Str; }
 
 impl<T:Clone>         VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
 impl<T>               VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
 impl<T:Clone+Ord>     VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
 impl<T:Clone+Ord>     VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
 impl<T:Clone+Sum<T>>  VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
+impl<T:ToString>      VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
