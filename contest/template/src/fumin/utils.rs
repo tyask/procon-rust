@@ -52,11 +52,18 @@ pub fn prime_fact(mut n: us) -> bmap<us, us> {
 }
 
 // 座標圧縮
-pub fn compress<T:Clone+PartialEq+Ord>(v: &[T]) -> Vec<us> {
+pub fn compress<T:Clone+PartialEq+Ord+FromT<us>>(v: &[T]) -> Vec<T> {
     use superslice::Ext;
     use itertools::Itertools;
     let t = v.iter().cloned().sorted().dedup().cv();
-    v.iter().map(|x|t.lower_bound(x)).cv()
+    v.iter().map(|x|T::from_t(t.lower_bound(x))).cv()
+}
+
+pub fn compress2d<T:Clone+PartialEq+Ord+FromT<us>>(v: &Vec<Vec<T>>) -> Vec<Vec<T>> {
+    use superslice::Ext;
+    use itertools::Itertools;
+    let t = v.iter().flatten().cloned().sorted().dedup().cv();
+    v.iter().map(|v|v.into_iter().map(|x|T::from_t(t.lower_bound(&x))).cv()).cv()
 }
 
 // ランレングス圧縮

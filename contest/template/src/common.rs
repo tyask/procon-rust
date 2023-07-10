@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_macros, non_snake_case, non_camel_case_types)]
-use std::{*, ops::*, collections::*, iter::Sum};
+use std::{*, ops::*, collections::*, iter::{Sum, FromIterator}};
 use itertools::Itertools;
 use ::num::{One, Zero};
 
@@ -134,8 +134,12 @@ pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 
 pub trait IterTrait : Iterator {
-    fn counts<N: SimplePrimInt+FromT<us>>(&mut self) -> map<Self::Item, N> where Self::Item: hash::Hash+Eq+Clone {
-        self.fold(map::<_,_>::new(), |mut m, x| { *m.or_def_mut(&x) += N::from_t(1); m })
+    fn counts(&mut self) -> CountIter<Self>
+        where
+            Self: Sized,
+            Self::Item: hash::Hash + Eq + Clone,
+    {
+        CountIter::new(self)
     }
     fn grouping_to_bmap<'a, K:Ord+Clone, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
         self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
@@ -144,6 +148,28 @@ pub trait IterTrait : Iterator {
         self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
+}
+pub struct CountIter<I: Iterator> {
+    nexts: deque<(I::Item, us)>,
+}
+impl<I: Iterator> CountIter<I> where I::Item: hash::Hash+Eq+Clone {
+    pub fn new(iter: &mut I) -> Self {
+        let mut cnt = map::new();
+        let mut keys = Vec::new();
+        while let Some(e) = iter.next() {
+            *cnt.or_def_mut(&e) += 1;
+            if cnt[&e] == 1 { keys.push(e); }
+        }
+        let nexts = deque::from_iter(
+            keys.into_iter().map(|k| { let c = cnt[&k]; (k,c) } ));
+        Self { nexts }
+    }
+}
+impl<I: Iterator> Iterator for CountIter<I> where I::Item: hash::Hash + Eq + Clone {
+    type Item = (I::Item, us);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.nexts.pop_front()
+    }
 }
 pub trait CharIterTrait<T: IntoT<char>> : Iterator<Item=T> {
     fn cstr(&mut self) -> String { self.map(|c|c.into_t()).collect::<Str>() }
@@ -167,6 +193,8 @@ pub trait VecMax<T>    { fn vmax(&self) -> T; }
 pub trait VecMin<T>    { fn vmin(&self) -> T; }
 pub trait VecSum<T>    { fn sum(&self) -> T; }
 pub trait VecStr<T>    { fn str(&self) -> Str; }
+pub trait VecMap<T>    { fn map<U>(&self, f: impl FnMut(&T)->U) -> Vec<U>; }
+pub trait VecPos<T>    { fn pos(&self, t: &T) -> us; }
 
 impl<T:Clone>         VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
 impl<T>               VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
@@ -174,6 +202,8 @@ impl<T:Clone+Ord>     VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().c
 impl<T:Clone+Ord>     VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
 impl<T:Clone+Sum<T>>  VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
 impl<T:ToString>      VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
+impl<T>               VecMap<T>   for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
+impl<T:Eq>            VecPos<T>   for [T] { fn pos(&self, t: &T) -> us { self.iter().position(|x|x==t).unwrap_or(self.len()) } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }

@@ -41,6 +41,10 @@ impl<M: Monoid> SegTree<M> {
         self.dat[p + self.size]
     }
 
+    pub fn all(&self) -> Vec<M::T> {
+        (0..self.n).into_iter().map(|i|self.get(i)).cv()
+    }
+
     pub fn prod(&self, rng: impl RangeBounds<us>) -> M::T {
         let rng = self.to_range(&rng);
         let (mut l, mut r) = (rng.start, rng.end);

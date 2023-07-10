@@ -20,6 +20,7 @@ pub mod pt;
 pub mod range_bounds_ex;
 pub mod rolling_hash;
 pub mod segtree;
+pub mod simulated_annealing;
 pub mod tree;
 pub mod unionfind;
 pub mod utils;
