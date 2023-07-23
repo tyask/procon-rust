@@ -3,6 +3,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 
 """
 Rustのソースファイルに以下のような文字列を埋め込むことでその問題のテストケースをダウンロードしテストを実行する.
@@ -32,6 +33,14 @@ def lookup_cargo(src):
 def generate_problem_url(contest, problem):
     return 'https://atcoder.jp/contests/{0}/tasks/{0}_{1}'.format(contest, problem)
 
+def can_open_url(url):
+    try:
+        with urllib.request.urlopen(url) as res:
+            return True
+    except urllib.error.URLError as e:
+        print("Failed to open url: {} (code={}, reason={})".format(url, e.code, e.reason))
+        return False
+
 def write_url_to_cargo(cargo, bin, url):
     # [package.metadata.cargo-compete.bin]
     # a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" } (*)
@@ -44,7 +53,7 @@ def write_url_to_cargo(cargo, bin, url):
     p1 = re.compile('\w+\s*=\s*{\s*problem\s*=\s*"(?P<URL>.*?)"\s*}')
     p2 = re.compile('name\s*=\s*"(?P<NAME>.*?)"')
     p3 = re.compile('path\s*=\s*"(?P<PATH>.*?)"')
-    pbin = re.compile('[[bin]]')
+    pbin = re.compile('\[\[bin\]\]')
     tmp = 'Cargo_tmp.toml'
     need_download_testcases = False
     is_bin_started = False
@@ -94,6 +103,9 @@ def main():
     cargo = lookup_cargo(src)
     bin = lookup_bin(src)
     url = generate_problem_url(prob[0], prob[1])
+
+    if not can_open_url(url):
+        return
 
     print('bin={}'.format(bin))
     print('url={}'.format(url))

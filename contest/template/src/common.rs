@@ -132,12 +132,15 @@ pub fn floor<N: SimplePrimInt>(a: N, b: N) -> N { a / b }
 pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
+pub fn to_int<T:Zero+One>(a: bool) -> T { if a { T::one() } else { T::zero() } }
+pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
 
 pub trait IterTrait : Iterator {
-    fn counts(&mut self) -> CountIter<Self>
+    fn counts<C>(&mut self) -> CountIter<Self, C>
         where
             Self: Sized,
             Self::Item: hash::Hash + Eq + Clone,
+            C: Eq + AddAssign<C> + One + Default + Copy,
     {
         CountIter::new(self)
     }
@@ -149,28 +152,34 @@ pub trait IterTrait : Iterator {
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 }
-pub struct CountIter<I: Iterator> {
-    nexts: deque<(I::Item, us)>,
+
+pub struct CountIter<I: Iterator, C> {
+    nexts: deque<(I::Item, C)>,
 }
-impl<I: Iterator> CountIter<I> where I::Item: hash::Hash+Eq+Clone {
+impl<I: Iterator, C> CountIter<I, C>
+    where
+        I::Item: hash::Hash+Eq+Clone,
+        C: Eq + AddAssign<C> + One + Default + Copy,
+        {
     pub fn new(iter: &mut I) -> Self {
         let mut cnt = map::new();
         let mut keys = Vec::new();
         while let Some(e) = iter.next() {
-            *cnt.or_def_mut(&e) += 1;
-            if cnt[&e] == 1 { keys.push(e); }
+            *cnt.or_def_mut(&e) += C::one();
+            if cnt[&e] == C::one() { keys.push(e); }
         }
         let nexts = deque::from_iter(
             keys.into_iter().map(|k| { let c = cnt[&k]; (k,c) } ));
         Self { nexts }
     }
 }
-impl<I: Iterator> Iterator for CountIter<I> where I::Item: hash::Hash + Eq + Clone {
-    type Item = (I::Item, us);
+impl<I: Iterator, C> Iterator for CountIter<I, C> where I::Item: hash::Hash + Eq + Clone {
+    type Item = (I::Item, C);
     fn next(&mut self) -> Option<Self::Item> {
         self.nexts.pop_front()
     }
 }
+
 pub trait CharIterTrait<T: IntoT<char>> : Iterator<Item=T> {
     fn cstr(&mut self) -> String { self.map(|c|c.into_t()).collect::<Str>() }
 }
@@ -180,11 +189,20 @@ pub trait HashIterTrait : Iterator where Self::Item: Eq+hash::Hash {
 pub trait OrdIterTrait : Iterator where Self::Item: Ord {
     fn cbset(&mut self) -> bset<Self::Item> { self.collect::<bset<_>>() }
 }
+pub trait PairHashIterTrait<T, U> : Iterator<Item=(T,U)> where T: Eq+hash::Hash {
+    fn cmap(&mut self) -> map<T, U> { self.collect::<map<_,_>>() }
+}
+pub trait PairOrdIterTrait<T, U> : Iterator<Item=(T,U)> where T: Ord {
+    fn cbmap(&mut self) -> bmap<T, U> { self.collect::<bmap<_,_>>() }
+}
 
-impl<T> IterTrait     for T where T: Iterator { }
-impl<T, U: IntoT<char>> CharIterTrait<U> for T where T: Iterator<Item=U> { }
-impl<T> HashIterTrait for T where T: Iterator, Self::Item: Eq+hash::Hash { }
-impl<T> OrdIterTrait  for T where T: Iterator, Self::Item: Ord { }
+impl<I> IterTrait     for I where I: Iterator { }
+impl<I, T: IntoT<char>> CharIterTrait<T> for I where I: Iterator<Item=T> { }
+impl<I> HashIterTrait for I where I: Iterator, Self::Item: Eq+hash::Hash { }
+impl<I> OrdIterTrait  for I where I: Iterator, Self::Item: Ord { }
+impl<I, T, U> PairHashIterTrait<T, U> for I where I: Iterator<Item=(T,U)>, T: Eq+hash::Hash { }
+impl<I, T, U> PairOrdIterTrait<T, U>  for I where I: Iterator<Item=(T,U)>, T: Ord { }
+
 
 // Vec
 pub trait VecFill<T>   { fn fill(&mut self, t: T); }
@@ -194,7 +212,8 @@ pub trait VecMin<T>    { fn vmin(&self) -> T; }
 pub trait VecSum<T>    { fn sum(&self) -> T; }
 pub trait VecStr<T>    { fn str(&self) -> Str; }
 pub trait VecMap<T>    { fn map<U>(&self, f: impl FnMut(&T)->U) -> Vec<U>; }
-pub trait VecPos<T>    { fn pos(&self, t: &T) -> us; }
+pub trait VecPos<T>    { fn pos(&self, t: &T) -> Option<us>; }
+pub trait VecRpos<T>    { fn rpos(&self, t: &T) -> Option<us>; }
 
 impl<T:Clone>         VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
 impl<T>               VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
@@ -203,7 +222,8 @@ impl<T:Clone+Ord>     VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().c
 impl<T:Clone+Sum<T>>  VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
 impl<T:ToString>      VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
 impl<T>               VecMap<T>   for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
-impl<T:Eq>            VecPos<T>   for [T] { fn pos(&self, t: &T) -> us { self.iter().position(|x|x==t).unwrap_or(self.len()) } }
+impl<T:Eq>            VecPos<T>   for [T] { fn pos(&self, t: &T) -> Option<us> { self.iter().position(|x|x==t) } }
+impl<T:Eq>            VecRpos<T>  for [T] { fn rpos(&self, t: &T) -> Option<us> { self.iter().rposition(|x|x==t) } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }

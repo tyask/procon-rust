@@ -8,7 +8,7 @@ pub struct MultiSet<V>(pub bmap<V, us>);
 impl<V:Clone+Copy+Ord> MultiSet<V> {
     pub fn new() -> Self { Self(bmap::new()) }
 
-    pub fn insert(&mut self, v: &V) -> us {
+    pub fn insert(&mut self, v: V) -> us {
         let c = self.0.or_def_mut(&v);
         *c += 1;
         *c

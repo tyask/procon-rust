@@ -21,8 +21,8 @@ impl From<(us, us, i64)> for Edge {
 }
 
 pub struct WarshallFloyd {
-    dist: Vec<Vec<i64>>,
-    prev: Vec<Vec<us>>,
+    pub dist: Vec<Vec<i64>>,
+    pub prev: Vec<Vec<us>>,
 }
 
 impl WarshallFloyd {
@@ -38,7 +38,7 @@ impl WarshallFloyd {
         self.add(e.rev());
     }
 
-        pub fn adds(&mut self, es: &Vec<Edge>) -> &mut Self {
+    pub fn adds(&mut self, es: &Vec<Edge>) -> &mut Self {
         for &e in es { self.add(e); }
         self
     }

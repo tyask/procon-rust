@@ -1,4 +1,5 @@
 pub mod cumsum;
+pub mod cumsum2d;
 pub mod dijkstra;
 pub mod grid;
 pub mod eratosthenes;
@@ -18,6 +19,7 @@ pub mod multiset;
 pub mod osak;
 pub mod pt;
 pub mod range_bounds_ex;
+pub mod rev_bheap;
 pub mod rolling_hash;
 pub mod segtree;
 pub mod simulated_annealing;

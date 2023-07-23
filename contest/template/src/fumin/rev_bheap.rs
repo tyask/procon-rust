@@ -1,9 +1,10 @@
-#![allow(dead_code)]
+#![allow(dead_code, non_camel_case_types)]
+use std::cmp::Reverse;
 use crate::common::*;
 
 // 昇順のヒープ
 
-pub type rbheap = RevBinaryHeap;
+pub type rbheap<T> = RevBinaryHeap<T>;
 
 pub struct RevBinaryHeap<T> {
     q: bheap<Reverse<T>>,

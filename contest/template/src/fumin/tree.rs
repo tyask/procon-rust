@@ -19,13 +19,13 @@ impl Tree {
     pub fn sub(&self, s: us) -> Vec<us> {
         let mut sub = vec![1; self.len()];
         let mut q = deque::new();
-        q.push_back((s, s, true));
+        q.push_back((s, us::INF, true));
         while let Some((v, p, pre)) = q.pop_back() {
             if pre {
                 q.push_back((v,p,false));
                 for &u in &self[v] { if u!=p { q.push_back((u,v,true)); } }
             } else {
-                sub[p] += sub[v]
+                if p != us::INF { sub[p] += sub[v]; }
             }
         }
         sub
