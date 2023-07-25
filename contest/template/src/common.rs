@@ -127,13 +127,20 @@ impl Wrapping for i64 { fn wraping_add(self, a: Self) -> Self { self.wrapping_ad
 #[macro_export] macro_rules! div   { ($a:expr,$b:expr) => { { let v = $b; $a /= v; } } }
 #[macro_export] macro_rules! rem   { ($a:expr,$b:expr) => { { let v = $b; $a %= v; } } }
 
-pub fn abs_diff(n1: us, n2: us) -> us { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
+pub fn abs_diff<T:PartialOrd+Sub<Output=T>>(n1: T, n2: T) -> T { if n1 >= n2 { n1 - n2 } else { n2 - n1 } }
 pub fn floor<N: SimplePrimInt>(a: N, b: N) -> N { a / b }
 pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 pub fn to_int<T:Zero+One>(a: bool) -> T { if a { T::one() } else { T::zero() } }
 pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
+fn bin_search<T: ExPrimInt+Shr<Output=T>>(mut ok: T, mut ng: T, f: impl Fn(T)->bool) -> T {
+    while abs_diff(ok, ng) > T::one() {
+        let m = (ok + ng) >> T::one();
+        if f(m) { ok = m; } else { ng = m; }
+    }
+    ok
+}
 
 pub trait IterTrait : Iterator {
     fn counts<C>(&mut self) -> CountIter<Self, C>
@@ -215,15 +222,21 @@ pub trait VecMap<T>    { fn map<U>(&self, f: impl FnMut(&T)->U) -> Vec<U>; }
 pub trait VecPos<T>    { fn pos(&self, t: &T) -> Option<us>; }
 pub trait VecRpos<T>    { fn rpos(&self, t: &T) -> Option<us>; }
 
-impl<T:Clone>         VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
-impl<T>               VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
-impl<T:Clone+Ord>     VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
-impl<T:Clone+Ord>     VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
-impl<T:Clone+Sum<T>>  VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
-impl<T:ToString>      VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
-impl<T>               VecMap<T>   for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
-impl<T:Eq>            VecPos<T>   for [T] { fn pos(&self, t: &T) -> Option<us> { self.iter().position(|x|x==t) } }
-impl<T:Eq>            VecRpos<T>  for [T] { fn rpos(&self, t: &T) -> Option<us> { self.iter().rposition(|x|x==t) } }
+impl<T:Clone>        VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
+impl<T>              VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
+impl<T:Clone+Ord>    VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
+impl<T:Clone+Ord>    VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
+impl<T:Clone+Sum<T>> VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
+impl<T:ToString>     VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
+impl<T>              VecMap<T>   for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
+impl<T:Eq>           VecPos<T>   for [T] { fn pos(&self, t: &T) -> Option<us> { self.iter().position(|x|x==t) } }
+impl<T:Eq>           VecRpos<T>  for [T] { fn rpos(&self, t: &T) -> Option<us> { self.iter().rposition(|x|x==t) } }
+
+// Deque
+pub trait DequePush<T> { fn push(&mut self, t: T); }
+pub trait DequePop<T> { fn pop(&mut self) -> Option<T>; }
+impl<T> DequePush<T> for VecDeque<T> { fn push(&mut self, t: T) { self.push_back(t); } }
+impl<T> DequePop<T>  for VecDeque<T> { fn pop(&mut self) -> Option<T> { self.pop_back() } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }

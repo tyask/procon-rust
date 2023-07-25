@@ -2,9 +2,10 @@
 name = "playground"
 version = "0.1.0"
 edition = "2018"
+default-run = "a"
 
 [package.metadata.cargo-compete.bin]
-a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_c" }
+a = { problem = "https://atcoder.jp/contests/abc246/tasks/abc246_d" }
 
 [[bin]]
 name = "a"
