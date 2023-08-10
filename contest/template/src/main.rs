@@ -2,6 +2,7 @@
 use std::{*, collections::*, ops::*, cmp::*, iter::*};
 use proconio::{input, fastout};
 use common::*;
+use fumin::*;
 
 fn main() {
     solve();

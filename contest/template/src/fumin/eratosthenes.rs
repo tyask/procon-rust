@@ -62,12 +62,12 @@ impl Eratosthenes {
     }
 
     // 高速約数列挙
-    // Nの約数をの個数をMとして計算量はO(M)
+    // Nの約数の個数をMとして計算量はO(M)
     pub fn divisors(&self, n: us) -> Vec<us> {
         let mut res = vec![1];
         for (p, e) in self.factorize(n) {
-            let mut v = 1;
             for x in res.clone() {
+                let mut v = 1;
                 for _ in 0..e { v *= p; res.push(x * v); }
             }
         }

@@ -187,7 +187,7 @@ pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
 // インタラクティブ問題ではこれをinputに渡す
 // let mut src = from_stdin();
 // input! {from &mut src, n: usize}
-pub fn from_stdin() -> proconio::source::line::LineSource<io::BufReader<io::Stdin>> {
+pub fn from_stdin() -> impl proconio::source::Source<io::BufReader<io::Stdin>> {
     proconio::source::line::LineSource::new(io::BufReader::new(io::stdin()))
 }
 

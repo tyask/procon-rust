@@ -134,7 +134,7 @@ pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 pub fn to_int<T:Zero+One>(a: bool) -> T { if a { T::one() } else { T::zero() } }
 pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
-fn bin_search<T: ExPrimInt+Shr<Output=T>>(mut ok: T, mut ng: T, f: impl Fn(T)->bool) -> T {
+pub fn bin_search<T: ExPrimInt+Shr<Output=T>>(mut ok: T, mut ng: T, f: impl Fn(T)->bool) -> T {
     while abs_diff(ok, ng) > T::one() {
         let m = (ok + ng) >> T::one();
         if f(m) { ok = m; } else { ng = m; }
