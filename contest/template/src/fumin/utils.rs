@@ -183,6 +183,15 @@ pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
     if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
 }
 
+pub fn bin_search_f64(mut ok: f64, mut ng: f64, f: impl Fn(f64)->bool, mut iter: us) -> f64 {
+    while iter > 0 {
+        iter -= 1;
+        let m = (ok + ng) / 2.;
+        if f(m) { ok = m; } else { ng = m; }
+    }
+    ok
+}
+
 // io
 // インタラクティブ問題ではこれをinputに渡す
 // let mut src = from_stdin();

@@ -14,6 +14,7 @@ impl<N> Pt<N> {
 impl<N: SimplePrimInt> Pt<N> {
     pub fn norm2(self) -> N   { self.x * self.x + self.y * self.y }
     pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
+    pub fn manhattan_distance(self, p: Pt<N>) -> N { abs_diff(self.x, p.x) + abs_diff(self.y, p.y) }
 }
 impl<N: SimplePrimInt+FromT<is>> Pt<N> {
     pub fn dir4() -> Vec<Pt<N>> {

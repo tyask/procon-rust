@@ -6,16 +6,19 @@ use crate::common::*;
 pub struct Graph(pub Vec<Vec<us>>);
 
 impl Graph {
+    pub fn new(n: us) -> Self { Self(vec![vec![]; n]) }
     pub fn digraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n];
-        uv.iter().for_each(|&(u,v)|g[u].push(v));
-        Self(g)
+        let mut g = Self::new(n);
+        uv.iter().for_each(|&(u,v)|g.add(u,v));
+        g
     }
     pub fn undigraph(n: us, uv: &Vec<(us, us)>) -> Self {
-        let mut g = vec![vec![]; n];
-        uv.iter().for_each(|&(u,v)|{g[u].push(v); g[v].push(u);});
-        Self(g)
+        let mut g = Self::new(n);
+        uv.iter().for_each(|&(u,v)|g.add2(u,v));
+        g
     }
+    pub fn add(&mut self, u: us, v: us) { self[u].push(v); }
+    pub fn add2(&mut self, u: us, v: us) { self.add(u, v); self.add(v, u); }
     pub fn len(&self) -> us { self.0.len() }
     pub fn rev(&self) -> Self {
         let ruv = self.0.iter().enumerate()

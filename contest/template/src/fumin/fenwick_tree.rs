@@ -86,15 +86,22 @@ impl<T: E> FromIterator<T> for FenwickTree<T> {
     }
 }
 
+impl<T: E> From<Vec<T>> for FenwickTree<T> {
+    fn from(value: Vec<T>) -> Self { Self::from_iter(value.into_iter()) }
+}
+
+
 // CAP(IGNORE_BELOW)
+
 // 転倒数
-pub fn count_inversions(v: Vec<i64>) -> us {
-    let mut r = 0;
+// 各iについてv[i]<v.len()である必要がある. そうでない場合は事前に座圧しておく.
+pub fn count_inversions(v: &Vec<i64>) -> us {
+    let mut c = 0;
     let mut t = FenwickTree::<i64>::new(v.len()); 
-    for (i, &x) in v.iter().enumerate() {
+    for &x in v {
         let x = x.us();
-        r += i - t.sum0(x).us();
+        c += t.sum(x+1..).us();
         t.add(x, 1);
     }
-    r
+    c
 }

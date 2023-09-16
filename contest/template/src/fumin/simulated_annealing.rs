@@ -27,7 +27,7 @@ impl SimulatedAnnealing {
         // スコアが改善されていれば更新する
         // 改善されていない場合でも時間と差分に応じた確率で遷移させる (焼きなまし)
         // scoreを最大化するように実装してるので、最小化したい場合は負にする必要あり.
-        if delta > 0 || self.prob(delta, elapsed) > self.rng.gen_range(0., 1.) {
+        if delta > 0 || self.prob(delta, elapsed) > self.rng.gen_range(0f64..1f64) {
             self.score = next_score;
             true
         } else {

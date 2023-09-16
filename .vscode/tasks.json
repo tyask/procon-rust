@@ -17,22 +17,23 @@
 		{
 			"label": "Cargo Compete DT",
 			"command": "python",
+			"type": "shell",
 			"args": [
 				"../../tools/compete_dt.py",
-				"${file}",
+				"'${file}'",
 			],
 			"options": {
 				"cwd": "${fileDirname}/../.."
 			},
 			"problemMatcher": []
 		},
-
 		{
 			"label": "Cargo Compete REFLESH",
 			"command": "python",
+			"type": "shell",
 			"args": [
 				"../../tools/compete_refresh.py",
-				"${file}",
+				"'${file}'",
 			],
 			"options": {
 				"cwd": "${fileDirname}/../.."
