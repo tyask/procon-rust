@@ -90,9 +90,6 @@ impl<T: E> From<Vec<T>> for FenwickTree<T> {
     fn from(value: Vec<T>) -> Self { Self::from_iter(value.into_iter()) }
 }
 
-
-// CAP(IGNORE_BELOW)
-
 // 転倒数
 // 各iについてv[i]<v.len()である必要がある. そうでない場合は事前に座圧しておく.
 pub fn count_inversions(v: &Vec<i64>) -> us {
@@ -105,3 +102,4 @@ pub fn count_inversions(v: &Vec<i64>) -> us {
     }
     c
 }
+

@@ -37,33 +37,19 @@ pub fn primes(n: us) -> Vec<us> {
 }
 
 // 素因数分解する.
-pub fn prime_fact(mut n: us) -> bmap<us, us> {
-    let mut m = bmap::new();
+pub fn prime_fact(mut n: us) -> Vec<(us, us)> {
+    let mut m = vec![];
     let mut d = 2;
     while d * d <= n {
         let mut e = 0;
         while n % d == 0 { e+=1; n /= d; }
-        if e != 0 { m.insert(d, e); }
+        if e != 0 { m.push((d, e)); }
         d+=1;
     }
 
-    if n != 1 { m.insert(n, 1); }
+    if n != 1 { m.push((n, 1)); }
+    m.sort();
     m
-}
-
-// 座標圧縮
-pub fn compress<T:Clone+PartialEq+Ord+FromT<us>>(v: &[T]) -> Vec<T> {
-    use superslice::Ext;
-    use itertools::Itertools;
-    let t = v.iter().cloned().sorted().dedup().cv();
-    v.iter().map(|x|T::from_t(t.lower_bound(x))).cv()
-}
-
-pub fn compress2d<T:Clone+PartialEq+Ord+FromT<us>>(v: &Vec<Vec<T>>) -> Vec<Vec<T>> {
-    use superslice::Ext;
-    use itertools::Itertools;
-    let t = v.iter().flatten().cloned().sorted().dedup().cv();
-    v.iter().map(|v|v.into_iter().map(|x|T::from_t(t.lower_bound(&x))).cv()).cv()
 }
 
 // ランレングス圧縮
@@ -192,6 +178,16 @@ pub fn bin_search_f64(mut ok: f64, mut ng: f64, f: impl Fn(f64)->bool, mut iter:
     ok
 }
 
+// 三分探索
+fn ternary_search<T: PartialOrd>(mut l: i64, mut r: i64, f: impl Fn(i64)->T) -> (i64, i64) {
+    while r - l > 2 {
+        let m1 = (l * 2 + r) / 3;
+        let m2 = (l + r * 2) / 3;
+        if f(m1) > f(m2) { l = m1; } else { r = m2; }
+    }
+    (l, r)
+}
+
 // io
 // インタラクティブ問題ではこれをinputに渡す
 // let mut src = from_stdin();
@@ -213,12 +209,6 @@ mod tests {
         assert_eq!(primes(2),  vec![2]);
         assert_eq!(primes(50), vec![2,3,5,7,11,13,17,19,23,29,31,37,41,43,47]);
         assert_eq!(primes(53), vec![2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53]);
-    }
-
-
-    #[test]
-    fn test_compress() {
-        assert_eq!(compress(&vec![1,3,8,4]), vec![0,1,3,2]);
     }
 
     #[test]

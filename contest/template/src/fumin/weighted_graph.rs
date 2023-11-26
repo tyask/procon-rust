@@ -2,7 +2,7 @@
 use std::ops::{Index, IndexMut};
 use crate::common::*;
 
-struct WeightedGraph<T> {
+pub struct WeightedGraph<T> {
     g: Vec<Vec<(us, T)>>,
 }
 

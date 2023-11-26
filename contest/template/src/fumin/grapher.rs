@@ -23,9 +23,11 @@ impl Graph {
             let mut st = deque::new();
             st.push_back((i, 0));
             while let Some((v, c)) = st.pop_back() {
-                if col[v] == c { return Err(()); }
+                if col[v] >= 0 {
+                    if col[v] != c { return Err(()); } else { continue; }
+                }
                 col[v] = c;
-                for &u in &self[v] { if col[u] < 0 { st.push_back((u, 1-c)); } }
+                for &u in &self[v] { st.push_back((u, c^1)); }
             }
         }
         Ok(col)

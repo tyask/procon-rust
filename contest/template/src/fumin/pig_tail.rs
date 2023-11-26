@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{ops::Index, iter::FromIterator};
+use std::ops::Index;
 use crate::common::*;
 
 // 以下のように途中でループが始まる有効グラフのi番目の要素を取得する

@@ -9,7 +9,7 @@ impl<V:Clone+Copy+Ord> MultiSet<V> {
     pub fn new() -> Self { Self(bmap::new()) }
 
     pub fn insert(&mut self, v: V) -> us {
-        let c = self.0.or_def_mut(&v);
+        let c = self.0.entry(v).or_insert(0);
         *c += 1;
         *c
     }
@@ -23,21 +23,44 @@ impl<V:Clone+Copy+Ord> MultiSet<V> {
             if *p > 0 { *p -= us::min(*p, n); }
             if *p == 0 {
                 self.0.remove(v);
-                return true;
             }
+            return true;
         }
-        return false;
+        false
+    }
+
+    pub fn push(&mut self, v: V) -> us {
+        self.insert(v)
+    }
+
+    pub fn pop(&mut self) -> Option<V> {
+        let first = self.iter().next().cloned();
+        self.pop_impl(&first)
+    }
+
+    pub fn pop_last(&mut self) -> Option<V> {
+        let last = self.iter().next_back().cloned();
+        self.pop_impl(&last)
+    }
+
+    fn pop_impl(&mut self, v: &Option<V>) -> Option<V> {
+        if let Some(v) = v {
+            self.remove(&v);
+            Some(*v)
+        } else {
+            None
+        }
     }
 
     pub fn count(&self, v: &V) -> us {
         self.0.or_def(v)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&V> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item=&V> {
         self.0.keys()
     }
 
-    pub fn iter_counts(&self) -> impl Iterator<Item=(&V, us)> {
+    pub fn iter_counts(&self) -> impl DoubleEndedIterator<Item=(&V, us)> {
         self.0.iter().map(|p|(p.0,*p.1))
     }
 
@@ -57,4 +80,3 @@ impl<V:Clone+Copy+Ord> MultiSet<V> {
         self.0.contains_key(&v)
     }
 }
-

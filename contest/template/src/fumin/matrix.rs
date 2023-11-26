@@ -2,7 +2,7 @@
 use std::ops::RemAssign;
 use alga::general::{ClosedMul, ClosedAdd};
 use itertools::iproduct;
-use nalgebra::{*, allocator::Allocator};
+use nalgebra::*;
 use num::{Zero, One};
 use crate::common::*;
 
@@ -14,11 +14,9 @@ trait MatrixTrait<N> {
     fn mulmod(&self, a: &Self, m: N) -> Self;
 }
 
-impl<N, D> MatrixTrait<N> for MatrixN<N, D>
+impl<N, const D: usize> MatrixTrait<N> for SMatrix<N, D, D>
 where
     N: Scalar + Zero + One + ClosedMul + ClosedAdd + RemAssign + Copy,
-    D: DimName,
-    DefaultAllocator: Allocator<N, D, D>,
 {
     fn powmod(&self, k: impl IntoT<us>, m: N) -> Self {
         let (mut a, mut k, mut r) = (Self::clone(self), k.into_t(), Self::one());

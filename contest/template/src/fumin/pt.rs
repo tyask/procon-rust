@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 use std::{*, ops::*, iter::Sum};
+use num_traits::Signed;
+
 use crate::common::*;
 
 // Pt
@@ -32,7 +34,22 @@ impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
     pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
 }
 impl<N: Wrapping> Wrapping for Pt<N> {
-    fn wraping_add(self, a: Self) -> Self { Self::of(self.x.wraping_add(a.x), self.y.wraping_add(a.y)) }
+    fn wrapping_add(self, a: Self) -> Self { Self::of(self.x.wrapping_add(a.x), self.y.wrapping_add(a.y)) }
+}
+
+impl<N: Copy + Signed> Pt<N> {
+    // 外積 (ベクトルself, vからなる平行四辺形の符号付面積)
+    pub fn cross(&self, v: Pt<N>) -> N {
+        self.x * v.y - self.y * v.x
+    }
+
+    // couter cross wise (ベクトルself, vが反時計回りかどうか)
+    pub fn ccw(&self, v: Pt<N>) -> i32 {
+        let a = self.cross(v);
+        if a.is_positive() { 1 } // ccw
+        else if a.is_negative() { -1 } // cw
+        else { 0 } // colinear
+    }
 }
 
 pub type Radian = f64;

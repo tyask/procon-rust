@@ -1,3 +1,4 @@
+pub mod compress;
 pub mod cumsum;
 pub mod cumsum2d;
 pub mod dijkstra;

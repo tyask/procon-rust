@@ -48,7 +48,7 @@ impl Grid<char> {
         m[s] = 0;
         while let Some(v) = que.pop_front() {
             for d in Pt::<us>::dir4() {
-                let nv = v.wraping_add(d);
+                let nv = v.wrapping_add(d);
                 if self.inp(nv) && self[nv]!='#' && m[nv]==us::INF {
                     m[nv] = m[v]+1;
                     que.push_back(nv);
