@@ -30,35 +30,41 @@ class Result:
         return 0
 
     def print(self):
-        print(self.stderr, end='')
-        print('{:04d} SCORE={:11,d}, ELAPSED={:.2f}s'.format(self.case, self.score, self.elapsed))
+        #print(self.stderr, end='')
+        cmts = self._lookup_comments()
+        print('{:04d} SCORE[{:11,d}] ELAPSED[{:.2f}s] CMTS[{}]'.format(self.case, self.score, self.elapsed, cmts))
 
     def clip(self):
         sb.run('clip < {}'.format(self.outf), shell=True, check=True, stderr=sb.DEVNULL)
 
+    def _lookup_comments(self):
+        cmts = ''
+        for line in self.stderr.split('\n'):
+            if line.startswith('# '):
+                if cmts:
+                    cmts += '/'
+                cmts += line[2:]
+        return cmts
+
 class Context:
     def __init__(self, args):
-        self.bin = os.path.basename(os.path.dirname(__file__)) + "-a"
+        self.bin = os.path.basename(os.path.dirname(__file__)) + "-" + args.a
         self.target_dir = 'target'
         self.tools = 'tools'
         self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin + '.exe'))
         self.vis = os.path.abspath(os.path.join(self.tools, 'vis.exe'))
-        cs = self._resolve_cases(args)
-        self.cases = self._parse_cases(cs) if len(cs) else range(0, 5)
+        self.tester = os.path.abspath(os.path.join(self.tools, 'tester.exe'))
+        self.cases = self._parse_cases(args)
+        self.args = args
         self.max_workers = 5
 
-    def _resolve_cases(self, args):
-        cases = list(args.cases)
-        if args.file:
-            with open(args.file) as f:
-                for line in f.readlines():
-                    if not line.startswith('#'):
-                        cases.extend(line.split(' '))
-        return cases
+    def _parse_cases(self, args):
+        if not args.cases:
+            return range(0, 5)
 
-    def _parse_cases(self, cases):
+        # (1 2 3-5) => (1 2 3 4 5)
         ret = []
-        for s in cases:
+        for s in args.cases:
             ss = s.split('-')
             if len(ss) == 1:
                 ret.append(int(ss[0]))
@@ -76,20 +82,24 @@ class Context:
     def output_file(self, case):
         return os.path.join(self.tools, 'out', '{:04d}.txt'.format(case))
 
-    def exe_test(self, inf, outf):
-        return sb.run('{} < {} > {}'.format(self.exe, inf, outf), shell=True, check=True, capture_output=True, text=True).stderr
+    def cmd(self, inf):
+        os.environ['INPUT_FILE'] = inf
+        return '{} < {}'.format(self.exe, inf)
+
+    def run(self, inf, outf):
+        return sb.run('{} > {}'.format(self.cmd(inf), outf), shell=True, check=True, capture_output=True, text=True).stderr
 
     def exe_vis(self, inf, outf):
         return sb.run('{} {} {}'.format(self.vis, inf, outf), shell=True, check=True, capture_output=True, text=True).stdout
 
-    def execute(self, case):
+    def execute_case(self, case):
         inf  = self.input_file(case)
         outf = self.output_file(case)
         os.makedirs(os.path.dirname(outf), exist_ok=True)
 
         # execute test
         st = time.time()
-        stderr = self.exe_test(inf, outf)
+        stderr = self.run(inf, outf)
         en = time.time()
         elapsed = en - st
 
@@ -99,48 +109,55 @@ class Context:
 
     def execute_with_multiprocess(self):
         with ProcessPoolExecutor(max_workers=self.max_workers) as e:
-            fs = [e.submit(self.execute, cs) for cs in self.cases]
+            fs = [e.submit(self.execute_case, cs) for cs in self.cases]
             for f in fs:
                 yield f.result()
 
     def execute_with_singleprocess(self):
         for cs in self.cases:
-            yield self.execute(cs)
+            yield self.execute_case(cs)
 
-    def execute_bare(self):
+    def run_only(self):
         for cs in self.cases:
-            inf  = self.input_file(cs)
-            outf = self.output_file(cs)
-            sb.run('{} < {}'.format(self.exe, inf), shell=True, check=True, text=True)
+            sb.run(self.cmd(self.input_file(cs)), shell=True, check=True, text=True)
+
+    def execute(self):
+        if self.args.run:
+            self.run_only()
+            return;
+        elif self.args.single:
+            res = self.execute_with_singleprocess()
+        elif self.args.multi:
+            res = self.execute_with_multiprocess()
+        else:
+            print('Invalid type: {}'.format(self.type))
+            return;
+
+        total = 0
+        for r in res:
+            r.print()
+            total += r.score
+        else:
+            r.clip()
+        print('TOTAL={:,}'.format(total))
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Executing program for huristic contest')
     parser.add_argument('cases', metavar='CASES', nargs='*', help='cases to execute')
-    parser.add_argument('-b', '--bare', action='store_true', help='execute bare')
-    parser.add_argument('-f', '--file', help='file the the cases are written')
-    parser.add_argument('-in', '--indir', help='directory which has input files', default='in')
-    parser.add_argument('-t', '--test', action='store_true', help='execute parameter test')
     parser.add_argument('-a', '--a', help='execute file', default='a')
+    parser.add_argument('-r', '--run', action='store_true', help='run')
+    parser.add_argument('-s', '--single', action='store_true', help='execute program on single thread')
+    parser.add_argument('-m', '--multi', action='store_true', default=True, help='execute program on mutiple thread')
     return parser.parse_args()
 
 def main():
     args = parse_args()
     ctx = Context(args)
     ctx.cargo_build()
-    execute(ctx, args)
+    ctx.execute()
 
-def execute(ctx, args):
-    if args.bare:
-        ctx.execute_bare()
-        return
-
-    res = ctx.execute_with_multiprocess()
-    total = 0
-    for r in res:
-        r.print()
-        r.clip()
-        total += r.score
-    print('TOTAL={:,}'.format(total))
 
 if __name__ == '__main__':
     main()
+

@@ -17,6 +17,10 @@ impl Graph {
         uv.iter().for_each(|&(u,v)|g.add2(u,v));
         g
     }
+    pub fn functional_graph(v: &Vec<us>) -> Self {
+        let n = v.len();
+        Self::digraph(n, &(0..n).map(|i|(i,v[i])).cv())
+    }
     pub fn add(&mut self, u: us, v: us) { self[u].push(v); }
     pub fn add2(&mut self, u: us, v: us) { self.add(u, v); self.add(v, u); }
     pub fn len(&self) -> us { self.0.len() }

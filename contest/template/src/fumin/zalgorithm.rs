@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 // sと任意のiについてs[i..]の最長共通接頭辞の長さを計算する.
-fn zalgorithm<T: PartialEq>(s: &[T]) -> Vec<usize> {
+pub fn zalgorithm<T: PartialEq>(s: &[T]) -> Vec<usize> {
     let (mut i, mut j, n) = (1, 0, s.len());
     let mut a = vec![0; s.len()];
     while i < n {

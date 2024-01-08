@@ -5,6 +5,7 @@ use super::graph::Graph;
 
 // CAP(fumin::graph)
 
+#[derive(Debug, Clone)]
 pub struct Tree(pub Graph);
 
 impl Tree {

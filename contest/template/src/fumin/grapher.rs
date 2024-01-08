@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::common::*;
+use crate::{common::*, chmax};
 use super::graph::Graph;
 
 // CAP(fumin::graph)
@@ -14,23 +14,23 @@ impl Graph {
 }
 
 impl Graph {
-    // 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合Err.
+    // 2部グラフの色を0,1で塗り分ける. 2部グラフでない場合None.
     // g: グラフを表す隣接リスト
-    pub fn colorize_bipartite(&self) -> Result<Vec<is>,()> {
-        let mut col = vec![-1; self.len()];
+    pub fn colorize_bipartite(&self) -> Option<Vec<us>> {
+        let mut col = vec![us::INF; self.len()];
         for i in 0..self.len() {
-            if col[i] >= 0 { continue; }
+            if col[i] < us::INF { continue; }
             let mut st = deque::new();
             st.push_back((i, 0));
             while let Some((v, c)) = st.pop_back() {
-                if col[v] >= 0 {
-                    if col[v] != c { return Err(()); } else { continue; }
+                if col[v] < us::INF {
+                    if col[v] != c { return None; } else { continue; }
                 }
                 col[v] = c;
                 for &u in &self[v] { st.push_back((u, c^1)); }
             }
         }
-        Ok(col)
+        Some(col)
     }
 }
 
@@ -99,6 +99,31 @@ impl Graph {
         }
 
         if ret.len() == n { Some(ret) } else { None }
+    }
+}
+
+impl Graph {
+    // DAGにおいて点sから各点への最長距離を求める. 到達できない場合は-1. O(N)
+    fn longest_dist_from(&self, s: us) -> Vec<i64> {
+        let n = self.len();
+
+        let mut deg = vec![0; n]; // 入次数
+        for u in 0..n { for &v in &self[u] { deg[v] += 1; }}
+
+        let mut q = deque::new();
+        for v in 0..n { if deg[v] == 0 { q.push_back(v); }}
+
+        let mut dp = vec![-1i64; n];
+        dp[s] = 0;
+
+        while let Some(u) = q.pop_front() {
+            for &v in &self[u] {
+                if dp[u] >= 0 { chmax!(dp[v], dp[u]+1); }
+                deg[v] -= 1;
+                if deg[v] == 0 { q.push(v); }
+            }
+        }
+        dp
     }
 }
 

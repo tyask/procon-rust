@@ -62,14 +62,6 @@ pub fn runlength_encoding<T:PartialEq+Copy>(v: &[T]) -> Vec<(T, us)> {
     a
 }
 
-// 2次元配列を右に90度回転させる
-pub fn rot<T:Copy>(g: &Vec<Vec<T>>) -> Vec<Vec<T>> {
-    let (h, w) = (g.len(), g[0].len());
-    let mut a = vec![vec![g[0][0]; h]; w];
-    for i in 0..h { for j in 0..w { a[j][h-1-i]=g[i][j]; }}
-    a
-}
-
 // xをn進数に変換する.
 pub fn to_base_n(mut x: us, n: us) -> Vec<us> {
     let mut v = vec![];

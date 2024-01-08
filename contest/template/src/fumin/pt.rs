@@ -18,24 +18,26 @@ impl<N: SimplePrimInt> Pt<N> {
     pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
     pub fn manhattan_distance(self, p: Pt<N>) -> N { abs_diff(self.x, p.x) + abs_diff(self.y, p.y) }
 }
-impl<N: SimplePrimInt+FromT<is>> Pt<N> {
-    pub fn dir4() -> Vec<Pt<N>> {
-        vec![Pt::is(0,1), Pt::is(0,!0), Pt::is(1,0), Pt::is(!0,0)]
-    }
-    pub fn dir8() -> Vec<Pt<N>> {
-        vec![
-            Pt::is(0,1), Pt::is(0,!0), Pt::is(1, 0), Pt::is(!0, 0),
-            Pt::is(1,1), Pt::is(1,!0), Pt::is(!0,1), Pt::is(!0,!0)
-            ]
-    }
-    fn is(x: is, y: is) -> Pt<N> { Self::of(N::from_t(x), N::from_t(y)) }
-}
-impl<N: SimplePrimInt+FromT<is>+ToF64> Pt<N> {
-    pub fn norm(self)  -> f64 { self.norm2().f64().sqrt() }
+impl<N: SimplePrimInt+FromT<i64>+ToF64> Pt<N> {
+    pub fn norm(self) -> f64 { self.norm2().f64().sqrt() }
 }
 impl<N: Wrapping> Wrapping for Pt<N> {
     fn wrapping_add(self, a: Self) -> Self { Self::of(self.x.wrapping_add(a.x), self.y.wrapping_add(a.y)) }
 }
+impl Pt<us> {
+    pub const C4: [char; 4] = ['R', 'L', 'D', 'U'];
+    pub const D4: [Self; 4] = [
+        Self{x:0,y:1},Self{x:0,y:!0},Self{x:1,y:0},Self{x:!0,y:0}
+        ];
+    pub const D8: [Self; 8] = [
+        Self{x:0,y:1},Self{x:0,y:!0},Self{x:1,y:0},Self{x:!0,y:0},
+        Self{x:1,y:1},Self{x:1,y:!0},Self{x:!0,y:1},Self{x:!0,y:!0},
+        ];
+    pub fn wrapping_sub(self, a: Self) -> Self { Self::of(self.x.wrapping_sub(a.x), self.y.wrapping_sub(a.y)) }
+    pub fn di(self, b: Pt<us>) -> us { Self::D8.pos(&b.wrapping_sub(self)).unwrap() }
+    pub fn dic(self, b: Pt<us>) -> char { Self::C4[Self::di(self,b)] }
+}
+
 
 impl<N: Copy + Signed> Pt<N> {
     // 外積 (ベクトルself, vからなる平行四辺形の符号付面積)
@@ -80,4 +82,25 @@ impl<N: SimplePrimInt+FromT<is>+proconio::source::Readable<Output=N>+IntoT<N>> p
 }
 impl<T> From<(T, T)> for Pt<T> {
     fn from(t: (T, T)) -> Self { Self::of(t.0, t.1) }
+}
+
+// CAP(IGNORE_BELOW)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_p_us() {
+        type P = Pt<us>;
+
+        assert_eq!(P::di(P::new(2,3), P::new(2,4)), 0);
+        assert_eq!(P::di(P::new(2,3), P::new(2,2)), 1);
+        assert_eq!(P::di(P::new(2,3), P::new(3,3)), 2);
+        assert_eq!(P::di(P::new(2,3), P::new(1,3)), 3);
+
+        assert_eq!(P::dic(P::new(2,3), P::new(2,4)), 'R');
+        assert_eq!(P::dic(P::new(2,3), P::new(2,2)), 'L');
+        assert_eq!(P::dic(P::new(2,3), P::new(3,3)), 'D');
+        assert_eq!(P::dic(P::new(2,3), P::new(1,3)), 'U');
+    }
 }

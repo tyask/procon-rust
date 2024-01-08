@@ -1,46 +1,78 @@
 #![allow(dead_code)]
-use rand::{rngs::SmallRng, Rng};
+use std::cmp::Ordering;
+
+use rand::Rng;
 use rand_core::SeedableRng;
 use crate::common::*;
 
+const M: us = 10;
+
 pub struct SimulatedAnnealing {
-    pub start_temp: i64, // 初期温度. 一度の遷移で改善されるscoreの最大値くらいを設定する
-    pub end_temp: i64,   // 最終温度. 一度の遷移で改善されるscoreの最小値くらいを設定する
-    pub limit_ms: us,
+    pub t0: f64, // 初期温度. 一度の遷移で改善されるscoreの最大値くらいを設定する
+    pub t1: f64, // 最終温度. 一度の遷移で改善されるscoreの最小値くらいを設定する
+    pub limit: f64,
     pub score: i64,
-    pub rng: SmallRng,
+    pub ordering: Ordering,
+    pub rng: rand_pcg::Pcg64Mcg,
+    pub temp: f64,
+    pub iter: us,
+    pub updated: [us; M],
 }
 
 impl SimulatedAnnealing {
-    pub fn new(start_temp: i64, end_temp: i64, limit_ms: us) -> Self {
+    pub fn new(t0: f64, t1: f64, limit: f64) -> Self {
         Self {
-            start_temp,
-            end_temp,
-            limit_ms,
+            t0,
+            t1,
+            limit,
             score: i64::MINF,
-            rng: SmallRng::from_entropy(),
+            ordering: Ordering::Greater,
+            rng: rand_pcg::Pcg64Mcg::from_entropy(),
+            temp: 0.,
+            iter: 0,
+            updated: [0; M],
         }
     }
 
-    pub fn update(&mut self, next_score: i64, elapsed: us) -> bool {
-        let delta = next_score - self.score;
+    pub fn initial_score(mut self, s: i64) -> Self {
+        self.score = s;
+        self
+    }
+
+    pub fn ordering(mut self, ordering: Ordering) -> Self {
+        self.ordering = ordering;
+        self
+    }
+
+    pub fn update(&mut self, next_score: i64, elapsed: f64) -> bool {
+        self.update_delta(next_score - self.score, elapsed)
+    }
+
+    pub fn update_delta(&mut self, delta: i64, elapsed: f64) -> bool {
+        if self.iter % 100 == 0 { self.temp = self.temp(elapsed); }
+        self.iter += 1;
         // スコアが改善されていれば更新する
         // 改善されていない場合でも時間と差分に応じた確率で遷移させる (焼きなまし)
         // scoreを最大化するように実装してるので、最小化したい場合は負にする必要あり.
-        if delta > 0 || self.prob(delta, elapsed) > self.rng.gen_range(0f64..1f64) {
-            self.score = next_score;
+        let improved = delta.cmp(&0) == self.ordering;
+        if improved || self.rng.gen_bool(f64::exp(delta.f64() / self.temp)) {
+            self.score += delta;
+            if improved { self.updated[(elapsed/self.limit*M.f64()).us()] += 1; }
             true
         } else {
             false
         }
     }
 
-    fn prob(&self, delta: i64, elapsed: us) -> f64 {
-        let (st, et, lim) = (self.start_temp.f64(), self.end_temp.f64(), self.limit_ms.f64());
-        let temp = st + (et - st) * elapsed.f64() / lim;
-        f64::exp(delta.f64() / temp)
+    fn temp(&self, elapsed: f64) -> f64 {
+        // 時間の経過に応じてt0 -> t1まで徐々に冷やされていく
+        let (t0, t1, t) = (self.t0, self.t1, elapsed / self.limit);
+        t0.powf(1. - t) * t1.powf(t)
     }
 
+    pub fn stats(&self) -> String {
+        format!("iter={} updated={:?}", self.iter, self.updated)
+    }
 }
 
 // CAP(IGNORE_BELOW)
@@ -53,11 +85,10 @@ mod tests {
     fn template() {
         let eval = || -> i64 { 10 }; // 評価関数
         let start = Instant::now();
-        let mut an = SimulatedAnnealing::new(30000, 10, 1900);
-        let mut _cnt = 0;
+        let mut an = SimulatedAnnealing::new(30000., 10., 1900.);
         loop {
-            let elapsed = start.elapsed().as_millis() as us;
-            if elapsed >= an.limit_ms { break; }
+            let elapsed = start.elapsed().as_millis() as f64;
+            if elapsed >= an.limit { break; }
 
             let next_score = eval();
             if an.update(next_score, elapsed) {
@@ -65,7 +96,6 @@ mod tests {
             } else {
                 // もとにもどす
             }
-            _cnt += 1;
         }
 
         println!("{}", an.score);
