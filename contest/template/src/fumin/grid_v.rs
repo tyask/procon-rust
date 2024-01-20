@@ -20,8 +20,8 @@ where
     pub fn with_default(h: us, w: us, v: T) -> Self {
         Self { g: vec![v; h * w], h, w, }
     }
-    pub fn is_valid_p<N: IntoT<us>>(&self, p: Pt<N>) -> bool { self.is_valid_t(p.tuple()) }
-    pub fn is_valid_t<N: IntoT<us>>(&self, t: (N, N)) -> bool { t.0.into_t() < self.h && t.1.into_t() < self.w }
+    pub fn is_in_p<N: IntoT<us>>(&self, p: Pt<N>) -> bool { self.is_in_t(p.tuple()) }
+    pub fn is_in_t<N: IntoT<us>>(&self, t: (N, N)) -> bool { t.0.into_t() < self.h && t.1.into_t() < self.w }
 }
 
 impl<T, N: IntoT<us>> Index<N> for GridV<T> {

@@ -9,6 +9,16 @@ from concurrent.futures import ProcessPoolExecutor
 
 """
 ヒューリスティックコンテストの問題を実行しスコアを出力する.
+以下のようなプロジェクト構成になっていることを前提とする.
+ahc001/
+ + hu.py
+ + target/release/ahc001-a.exe (Rustの場合)
+ + tools/
+    + vis.exe
+    + in/
+
+デフォルトではテストを並列実行するが、CPU数によっては性能劣化することがあるのて注意(ループがあまり回らずに想定よりスコアが劣化する).
+正確に評価したい場合はシングルモードで実行する.
 """
 
 class Result:
@@ -22,7 +32,7 @@ class Result:
         self.score = self._score()
 
     def _score(self):
-        # ビジュアライザの出力からスコアを取得する. 問題に応じて変更する必要あり.
+        # ビジュアライザの出力からスコアを取得する. vis.exeの出力仕様に応じて変更する必要あり.
         for line in self.visout.split('\n'):
             m = re.search('Score = (\d+)', line)
             if m:
@@ -31,7 +41,7 @@ class Result:
 
     def print(self):
         #print(self.stderr, end='')
-        cmts = self._lookup_comments()
+        cmts = self._lookup_comments() # デバッグやケースの特徴の分析のために標準エラーからコメント行を取得して表示する
         print('{:04d} SCORE[{:11,d}] ELAPSED[{:.2f}s] CMTS[{}]'.format(self.case, self.score, self.elapsed, cmts))
 
     def clip(self):
@@ -46,7 +56,7 @@ class Result:
                 cmts += line[2:]
         return cmts
 
-class Context:
+class Hu:
     def __init__(self, args):
         self.bin = os.path.basename(os.path.dirname(__file__)) + "-" + args.a
         self.target_dir = 'target'
@@ -60,7 +70,7 @@ class Context:
 
     def _parse_cases(self, args):
         if not args.cases:
-            return range(0, 5)
+            return range(5)
 
         # (1 2 3-5) => (1 2 3 4 5)
         ret = []
@@ -89,6 +99,10 @@ class Context:
     def run(self, inf, outf):
         return sb.run('{} > {}'.format(self.cmd(inf), outf), shell=True, check=True, capture_output=True, text=True).stderr
 
+    def run_tester(self, inf, outf):
+        return sb.run('{} {} > {}'.format(self.tester, self.cmd(inf), outf), shell=True, check=True, capture_output=True, text=True).stderr
+
+
     def exe_vis(self, inf, outf):
         return sb.run('{} {} {}'.format(self.vis, inf, outf), shell=True, check=True, capture_output=True, text=True).stdout
 
@@ -100,6 +114,7 @@ class Context:
         # execute test
         st = time.time()
         stderr = self.run(inf, outf)
+        # stderr = self.run_tester(inf, outf) # インタラクティブ問題用
         en = time.time()
         elapsed = en - st
 
@@ -123,40 +138,38 @@ class Context:
 
     def execute(self):
         if self.args.run:
-            self.run_only()
-            return;
+            self.run_only() # 結果を解析したりせずにただ実行するだけ
+            return
         elif self.args.single:
             res = self.execute_with_singleprocess()
         elif self.args.multi:
             res = self.execute_with_multiprocess()
         else:
             print('Invalid type: {}'.format(self.type))
-            return;
+            return
 
         total = 0
         for r in res:
             r.print()
             total += r.score
         else:
-            r.clip()
+            r.clip() # 最後のケースの結果をクリップボードに貼り付ける.
         print('TOTAL={:,}'.format(total))
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Executing program for huristic contest')
-    parser.add_argument('cases', metavar='CASES', nargs='*', help='cases to execute')
+    parser.add_argument('cases', metavar='CASES', nargs='*', help='cases to execute. ex) 0 1 3-5')
     parser.add_argument('-a', '--a', help='execute file', default='a')
-    parser.add_argument('-r', '--run', action='store_true', help='run')
+    parser.add_argument('-r', '--run', action='store_true', help='execute program without evaluation')
     parser.add_argument('-s', '--single', action='store_true', help='execute program on single thread')
     parser.add_argument('-m', '--multi', action='store_true', default=True, help='execute program on mutiple thread')
     return parser.parse_args()
 
 def main():
-    args = parse_args()
-    ctx = Context(args)
-    ctx.cargo_build()
-    ctx.execute()
-
+    hu = Hu(parse_args())
+    hu.cargo_build() # rustのモジュールをビルドする. rustを使わない場合はスキップする
+    hu.execute()
 
 if __name__ == '__main__':
     main()

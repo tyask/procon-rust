@@ -65,7 +65,11 @@ pub fn runlength_encoding<T:PartialEq+Copy>(v: &[T]) -> Vec<(T, us)> {
 // xをn進数に変換する.
 pub fn to_base_n(mut x: us, n: us) -> Vec<us> {
     let mut v = vec![];
-    while x > 0 { v.push(x%n); x/=n; }
+    loop {
+        v.push(x % n);
+        x /= n;
+        if x == 0 { break; }
+    }
     v.reverse();
     v
 }

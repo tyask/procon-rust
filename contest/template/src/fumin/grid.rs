@@ -15,8 +15,8 @@ impl<T: Clone> Grid<T> {
 impl<T> Grid<T> {
     pub fn h(&self) -> us { self.0.len() }
     pub fn w(&self) -> us { self.0[0].len() }
-    pub fn is_valid_p(&self, p: Pt<us>) -> bool { self.is_valid_t(p.tuple()) }
-    pub fn is_valid_t(&self, t: (us,us)) -> bool { t.0 < self.h() && t.1 < self.w() }
+    pub fn is_in_p(&self, p: Pt<us>) -> bool { self.is_in_t(p.tuple()) }
+    pub fn is_in_t(&self, t: (us,us)) -> bool { t.0 < self.h() && t.1 < self.w() }
 }
 impl<T: Clone+Eq> Grid<T> {
     pub fn position(&self, t: &T) -> Option<Pt<us>> {
@@ -56,7 +56,7 @@ impl Grid<char> {
         while let Some(v) = que.pop_front() {
             for d in Pt::<us>::D4 {
                 let nv = v.wrapping_add(d);
-                if self.is_valid_p(nv) && self[nv]!='#' && m[nv]==us::INF {
+                if self.is_in_p(nv) && self[nv]!='#' && m[nv]==us::INF {
                     m[nv] = m[v]+1;
                     que.push_back(nv);
                 }
