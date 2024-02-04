@@ -347,30 +347,28 @@ fmt_primitive! {
 
 impl<T: Fmt> Fmt for [T]         { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
+impl<T: Fmt> Fmt for set<T>      { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
+impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 
 #[macro_export] macro_rules! fmt {
-    ($a:expr, $($b:expr),*)       => {{ format!("{} {}", fmt!(($a)), fmt!($($b),*)) }};
-    ($a:expr)                     => {{ ($a).fmt() }};
+    ($a:expr, $($b:expr),*) => {{ format!("{} {}", fmt!(($a)), fmt!($($b),*)) }};
+    ($a:expr)               => {{ ($a).fmt() }};
 
     (@debug $a:expr, $($b:expr),*) => {{ format!("{} {}", fmt!(@debug ($a)), fmt!(@debug $($b),*)) }};
     (@debug $a:expr)               => {{ format!("{:?}", ($a)) }};
-
-    (@line $a:expr, $($b:expr),*) => {{ format!("{}\n{}", fmt!(@line $a), fmt!(@line $($b),*)) }};
-    (@line $a:expr)               => {{ ($a).fmt() }};
-
-    (@byline $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|e| e.fmt()).join("\n") }};
-    (@grid   $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|v| v.iter().collect::<Str>()).join("\n") }};
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
     ($($a:expr),*)    => { eprintln!("{}", fmt!(@debug  $($a),*)); };
-    (@byline $a:expr) => { eprintln!("{}", fmt!(@byline $a)); };
-    (@grid   $a:expr) => { eprintln!("{}", fmt!(@grid   $a)); };
 }
 #[macro_export]#[cfg(not(feature="local"))] macro_rules! debug {
     ($($a:expr),*)    => { };
-    (@byline $a:expr) => { };
-    (@grid   $a:expr) => { };
+}
+#[macro_export]#[cfg(feature="local")] macro_rules! debug2d {
+    ($a:expr) => { for v in &($a) { eprintln!("{:?}", v); } };
+}
+#[macro_export]#[cfg(not(feature="local"))] macro_rules! debug2d {
+    ($a:expr) => { };
 }
 
 pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
@@ -393,11 +391,6 @@ mod tests {
         assert_eq!(fmt!(2, 3),        "2 3");
         assert_eq!(fmt!(2.123),       "2.123");
         assert_eq!(fmt!(vec![1,2,3]), "1 2 3");
-
-        assert_eq!(fmt!(@line 2, 3),        "2\n3");
-
-        assert_eq!(fmt!(@byline vec![1,2,3]),          "1\n2\n3");
-        assert_eq!(fmt!(@byline vec!["ab","cd","ef"]), "ab\ncd\nef");
 
         assert_eq!(fmt!(@debug vec![1,2,3]), "[1, 2, 3]");
     }

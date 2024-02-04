@@ -1,7 +1,6 @@
 #![allow(dead_code)]
-use crate::common::*;
 
-trait Vec2d<T> {
+pub trait Vec2d<T> {
     fn rot_right(&self) -> Vec<Vec<T>>;
     fn rot_left(&self) -> Vec<Vec<T>>;
 }
@@ -22,4 +21,5 @@ impl<T: Clone> Vec2d<T> for [Vec<T>] {
         for i in 0..h { for j in 0..w { a[w-j-1][i]=self[i][j].clone(); }}
         a
     }
+
 }

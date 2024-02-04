@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use itertools::iproduct;
 
 use crate::common::*;
-use super::pt::Pt;
+use super::pt::{Pt, Dir};
 
 // CAP(fumin::pt)
 
@@ -54,8 +54,8 @@ impl Grid<char> {
         que.push_back(s);
         m[s] = 0;
         while let Some(v) = que.pop_front() {
-            for d in Pt::<us>::D4 {
-                let nv = v.wrapping_add(d);
+            for d in Dir::VAL4 {
+                let nv = v.next(d);
                 if self.is_in_p(nv) && self[nv]!='#' && m[nv]==us::INF {
                     m[nv] = m[v]+1;
                     que.push_back(nv);

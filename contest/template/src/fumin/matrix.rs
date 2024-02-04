@@ -6,7 +6,7 @@ use nalgebra::*;
 use num::{Zero, One};
 use crate::common::*;
 
-trait MatrixTrait<N> {
+pub trait MatrixTrait<N> {
     // self^k mod m
     fn powmod(&self, k: impl IntoT<us>, m: N) -> Self;
 
@@ -14,12 +14,12 @@ trait MatrixTrait<N> {
     fn mulmod(&self, a: &Self, m: N) -> Self;
 }
 
-impl<N, const D: usize> MatrixTrait<N> for SMatrix<N, D, D>
+impl<T, const D: usize> MatrixTrait<T> for SMatrix<T, D, D>
 where
-    N: Scalar + Zero + One + ClosedMul + ClosedAdd + RemAssign + Copy,
+    T: Scalar + Zero + One + ClosedMul + ClosedAdd + RemAssign + Copy,
 {
-    fn powmod(&self, k: impl IntoT<us>, m: N) -> Self {
-        let (mut a, mut k, mut r) = (Self::clone(self), k.into_t(), Self::one());
+    fn powmod(&self, k: impl IntoT<us>, m: T) -> Self {
+        let (mut a, mut k, mut r) = (self.clone(), k.into_t(), Self::one());
         while k > 0 {
             if k & 1 == 1 { r = r.mulmod(&a, m); }
             a = a.mulmod(&a, m);
@@ -28,7 +28,7 @@ where
         r
     }
 
-    fn mulmod(&self, a: &Self, m: N) -> Self {
+    fn mulmod(&self, a: &Self, m: T) -> Self {
         let (n, mut r) = (self.nrows(), Self::zero());
         for (i, j, k) in iproduct!(0..n, 0..n, 0..n) {
             r[(i,j)] += self[(i,k)] * a[(k,j)];

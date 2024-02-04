@@ -1,11 +1,14 @@
 #![allow(dead_code)]
 use std::{*, ops::*, iter::Sum};
 use num_traits::Signed;
+use rand::Rng;
 
-use crate::common::*;
+use crate::{common::*, enrich_enum, count};
+
+// CAP(fumin::enrich_enum)
 
 // Pt
-#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash,Default)]
+#[derive(Debug,Copy,Clone,PartialEq,Eq,PartialOrd,Ord,Hash,Default)]
 pub struct Pt<N> { pub x: N, pub y: N }
 
 impl<N> Pt<N> {
@@ -25,19 +28,15 @@ impl<N: Wrapping> Wrapping for Pt<N> {
     fn wrapping_add(self, a: Self) -> Self { Self::of(self.x.wrapping_add(a.x), self.y.wrapping_add(a.y)) }
 }
 impl Pt<us> {
-    pub const C4: [char; 4] = ['R', 'L', 'D', 'U'];
-    pub const D4: [Self; 4] = [
-        Self{x:0,y:1},Self{x:0,y:!0},Self{x:1,y:0},Self{x:!0,y:0}
-        ];
-    pub const D8: [Self; 8] = [
-        Self{x:0,y:1},Self{x:0,y:!0},Self{x:1,y:0},Self{x:!0,y:0},
-        Self{x:1,y:1},Self{x:1,y:!0},Self{x:!0,y:1},Self{x:!0,y:!0},
-        ];
     pub fn wrapping_sub(self, a: Self) -> Self { Self::of(self.x.wrapping_sub(a.x), self.y.wrapping_sub(a.y)) }
-    pub fn di(self, b: Pt<us>) -> us { Self::D8.pos(&b.wrapping_sub(self)).unwrap() }
-    pub fn dic(self, b: Pt<us>) -> char { Self::C4[Self::di(self,b)] }
+    pub fn next(self, d: Dir) -> Self { self.wrapping_add(d.p()) }
+    pub fn prev(self, d: Dir) -> Self { self.wrapping_sub(d.p()) }
 }
 
+impl<T: Inf> Inf for Pt<T> {
+    const INF: Self  = Pt::<T>{x: T::INF,  y: T::INF};
+    const MINF: Self = Pt::<T>{x: T::MINF, y: T::MINF};
+}
 
 impl<N: Copy + Signed> Pt<N> {
     // 外積 (ベクトルself, vからなる平行四辺形の符号付面積)
@@ -84,6 +83,51 @@ impl<T> From<(T, T)> for Pt<T> {
     fn from(t: (T, T)) -> Self { Self::of(t.0, t.1) }
 }
 
+enrich_enum! {
+    pub enum Dir {
+        R, L, D, U, RU, RD, LD, LU,
+    }
+}
+
+impl Dir {
+    pub const C4: [char; 4] = ['R', 'L', 'D', 'U'];
+    pub const VAL4: [Self; 4] = [Self::R,Self::L,Self::D,Self::U];
+    pub const P8: [Pt<us>; 8] = [
+        Pt::<us>{x:0,y:1},Pt::<us>{x:0,y:!0},Pt::<us>{x:1,y:0},Pt::<us>{x:!0,y:0},
+        Pt::<us>{x:1,y:1},Pt::<us>{x:1,y:!0},Pt::<us>{x:!0,y:1},Pt::<us>{x:!0,y:!0},
+        ];
+    pub const REV8: [Self; 8] = [
+        Self::L,Self::R,Self::U,Self::D,
+        Self::LD,Self::LU,Self::RU,Self::RD,
+        ];
+    pub const RROT90: [Self; 4] = [Self::D,Self::U,Self::L,Self::R];
+    pub const LROT90: [Self; 4] = [Self::U,Self::D,Self::R,Self::L];
+    pub const RROT45: [Self; 8] = [
+        Self::RD,Self::LU,Self::LD,Self::RU,
+        Self::R,Self::D,Self::L,Self::U,
+        ];
+    pub const LROT45: [Self; 8] = [
+        Self::RU,Self::LD,Self::RD,Self::LU,
+        Self::U,Self::R,Self::D,Self::L,
+        ];
+
+    #[inline] pub const fn c(self) -> char   { Self::C4[self.id()] }
+    #[inline] pub const fn p(self) -> Pt<us> { Self::P8[self.id()] }
+    #[inline] pub const fn rev(self) -> Self { Self::REV8[self.id()] }
+    #[inline] pub const fn rrot90(self) -> Self { Self::RROT90[self.id()] }
+    #[inline] pub const fn lrot90(self) -> Self { Self::LROT90[self.id()] }
+    #[inline] pub const fn rrot45(self) -> Self { Self::RROT45[self.id()] }
+    #[inline] pub const fn lrot45(self) -> Self { Self::LROT45[self.id()] }
+
+    #[inline] pub fn dir(a: Pt<us>, b: Pt<us>) -> Self { (b.wrapping_sub(a)).into() } // a -> b
+    #[inline] pub fn rng4(rng: &mut impl rand_core::RngCore) -> Dir { Self::VALS[rng.gen_range(0..4)] }
+    #[inline] pub fn rng8(rng: &mut impl rand_core::RngCore) -> Dir { Self::VALS[rng.gen_range(0..8)] }
+
+}
+impl From<Pt<us>> for Dir { fn from(value: Pt<us>) -> Self { Self::P8.pos(&value).unwrap().into() } }
+impl From<char>   for Dir { fn from(value: char) -> Self { Self::C4.pos(&value).unwrap().into() } }
+
+
 // CAP(IGNORE_BELOW)
 #[cfg(test)]
 mod tests {
@@ -93,14 +137,10 @@ mod tests {
     fn test_p_us() {
         type P = Pt<us>;
 
-        assert_eq!(P::di(P::new(2,3), P::new(2,4)), 0);
-        assert_eq!(P::di(P::new(2,3), P::new(2,2)), 1);
-        assert_eq!(P::di(P::new(2,3), P::new(3,3)), 2);
-        assert_eq!(P::di(P::new(2,3), P::new(1,3)), 3);
+        assert_eq!(Dir::dir(P::new(2,3), P::new(2,4)), Dir::R);
+        assert_eq!(Dir::dir(P::new(2,3), P::new(2,2)), Dir::L);
+        assert_eq!(Dir::dir(P::new(2,3), P::new(3,3)), Dir::D);
+        assert_eq!(Dir::dir(P::new(2,3), P::new(1,3)), Dir::U);
 
-        assert_eq!(P::dic(P::new(2,3), P::new(2,4)), 'R');
-        assert_eq!(P::dic(P::new(2,3), P::new(2,2)), 'L');
-        assert_eq!(P::dic(P::new(2,3), P::new(3,3)), 'D');
-        assert_eq!(P::dic(P::new(2,3), P::new(1,3)), 'U');
     }
 }

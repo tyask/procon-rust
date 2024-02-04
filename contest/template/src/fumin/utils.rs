@@ -96,19 +96,23 @@ pub fn powmod<N: ExPrimInt+::num::Zero+::num::One+ops::BitAnd<Output=N>+ops::Shr
     a
 }
 
-// 巡回セールスマン問題
+// Traveling Salesman Problem(巡回セールスマン問題)
 // g[u][v] := u->vの距離 (gは隣接行列とする)
-// 計算量は、頂点数をnとしてO(n^2*2^n)
-// 全頂点を巡回して0に戻る値はdp[(1<<n)-1][0]で取得する.
-fn traveling_salesman(g: &Vec<Vec<i64>>, s: us) -> Vec<Vec<i64>> {
+// st: 始点(複数指定可)
+// return_to_home: 始点に戻るまで計算対象にする場合true
+// 計算量: 頂点数をnとしてO(n^2*2^n)
+// 全頂点を巡回してstに戻るときの最小コストは、return_to_home=trueで実行したときのdp[(1<<n)-1][st]で取得できる.
+fn tsp(g: &Vec<Vec<i64>>, st: &[us], return_to_home: bool) -> Vec<Vec<i64>> {
     use itertools::iproduct;
     use crate:: chmin;
 
     let n = g.len();
     // dp[s][v] := 0から出発してsの頂点集合を巡回しvに到達する経路のうちの最短距離
     let mut dp = vec![vec![i64::INF; n]; 1<<n];
-    dp[1<<s][s] = 0;
-    for (s, v, u) in iproduct!(0..1<<n, 0..n, 0..n) {
+    let initial_bit = |st: us| { if return_to_home { 0 } else { 1<<st } };
+    for &st in st { dp[initial_bit(st)][st] = 0; }
+    for (s, u, v) in iproduct!(0..1<<n, 0..n, 0..n) {
+        if s>>v&1==1 || dp[s][u]==i64::INF || g[u][v]==i64::INF { continue; }
         chmin!(dp[s|1<<v][v], dp[s][u]+g[u][v]);
     }
     dp
