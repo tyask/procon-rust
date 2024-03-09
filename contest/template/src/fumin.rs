@@ -15,6 +15,7 @@ pub mod grid_v;
 pub mod hld;
 pub mod kmp;
 pub mod kruskal;
+pub mod lazy_segtree;
 pub mod lca;
 pub mod matrix;
 pub mod modcombination;

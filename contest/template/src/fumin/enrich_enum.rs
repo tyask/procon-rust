@@ -17,7 +17,7 @@ macro_rules! enrich_enum {
             $($e,)*
         }
         impl $name {
-            const VALS: [Self; count!($($e)*)] = [$(Self::$e,)*];
+            pub const VALS: [Self; count!($($e)*)] = [$(Self::$e,)*];
             #[inline] pub const fn id(self) -> us { self as us }
             #[inline] pub const fn b(self) -> u32 { 1<<self.id() }
             #[inline] pub const fn is_or(self, b: u32) -> bool { self.b() & b > 0 }

@@ -27,8 +27,8 @@ impl Dijkstra {
     pub fn run(&mut self, s: us) -> &Vec<i64> {
         type P = (i64, us); // cost, node
 
-        self.dist = vec![i64::INF; self.dist.len()];
-        self.prev = vec![us::INF; self.prev.len()];
+        self.dist.fill(i64::INF);
+        self.prev.fill(us::INF);
 
         let g = &self.g;
         let dist = &mut self.dist;

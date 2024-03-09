@@ -153,3 +153,29 @@ impl Graph {
         return dp.vmax();
     }
 }
+
+impl Graph {
+    // 閉路を検出する.
+    // ただし、このグラフに閉路が一つだけあることを前提としている.
+    pub fn lookup_cycle(&self) -> Vec<us> {
+        let n = self.len();
+        let mut deg = vec![0; n]; // 入次数
+        for u in 0..n { for &v in &self[u] { deg[v] += 1; }}
+
+        let mut q = deque::new();
+        for v in 0..n { if deg[v] == 1 { q.push_back(v); }}
+
+        let mut is_cycle = vec![true; n];
+        while let Some(u) = q.pop_front() {
+            is_cycle[u] = false;
+            for &v in &self[u] {
+                if deg[v] >= 2 {
+                    deg[v] -= 1;
+                    if deg[v] == 1 { q.push(v); }
+                }
+            }
+        }
+
+        (0..n).filter(|&i|is_cycle[i]).cv()
+    }
+}

@@ -158,6 +158,14 @@ pub trait IterTrait : Iterator {
         self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
+
+    fn shuffled(self, rng: &mut impl rand_core::RngCore) -> vec::IntoIter<Self::Item> where Self: Sized {
+        use rand::seq::SliceRandom;
+        let mut v = Vec::from_iter(self);
+        v.shuffle(rng);
+        v.into_iter()
+    }
+
 }
 
 pub struct CountIter<I: Iterator, C> {
