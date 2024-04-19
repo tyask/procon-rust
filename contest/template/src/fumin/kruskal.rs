@@ -15,15 +15,19 @@ pub struct Kruskal {
 }
 
 impl Kruskal {
-    pub fn new(n: us) -> Self { Self { n, edges: vec![] }}
+    pub fn new(n: us) -> Self {
+        assert!(n > 0);
+        Self { n, edges: vec![] }
+    }
     pub fn add_edge(&mut self, e: Edge) { self.edges.push(e); }
     pub fn add(&mut self, u: us, v: us, cost: i64) { self.edges.push(Edge::new(u, v, cost)); }
 
-    pub fn run(&mut self) -> Vec<Edge> {
+    pub fn run(&mut self) -> Option<Vec<Edge>> {
         self.edges.sort_by_key(|e|e.cost);
-        let mut uf = Unionfind::new(self.n);
+        let n = self.n;
+        let mut uf = Unionfind::new(n);
         let mut ret = vec![];
         for &e in &self.edges { if uf.unite(e.u, e.v) { ret.push(e); }}
-        return ret;
+        if uf.size(0) == n { Some(ret) } else { None }
     }
 }

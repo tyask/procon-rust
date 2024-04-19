@@ -31,6 +31,37 @@ impl Tree {
         }
         sub
     }
+
+        // 木の重心を計算する(最大で2つ)
+    pub fn centroids(&self) -> Vec<us> {
+        struct Dfs<'a> {
+            t: &'a Tree,
+            sub: Vec<us>,
+            centroids: Vec<us>,
+        }
+
+        impl<'a> Dfs<'a> {
+            fn dfs(&mut self, v: us, p: us) {
+                let n = self.t.0.len();
+                let mut is_centroid = true;
+                for ch in self.t[v].clone() { if ch != p {
+                    self.dfs(ch, v);
+                    if self.sub[ch] > n / 2 { is_centroid = false; }
+                    self.sub[v] += self.sub[ch];
+                }}
+                if n - self.sub[v] > n / 2 { is_centroid = false; }
+                if is_centroid { self.centroids.push(v); }
+            }
+        }
+
+        let mut d = Dfs {
+            t: self,
+            sub: vec![1; self.0.len()],
+            centroids: vec![],
+        };
+        d.dfs(0, 0);
+        d.centroids
+    }
 }
 
 impl<T: IntoT<us>> Index<T> for Tree {
