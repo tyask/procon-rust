@@ -1,110 +1,473 @@
 #![allow(unused_imports)]
-use std::{cmp::*, collections::*, iter::*, mem::swap, ops::*, *};
+use std::{cmp::*, collections::*, iter::*, mem::swap, ops::*, rc::Rc, time::Instant, *};
 use itertools::{iproduct, Itertools};
 use proconio::{input, fastout};
 use common::*;
-use fumin::*;
+use fumin::{grid_v::GridV, pt::{Dir, Pt}, *};
+use rand::{seq::IteratorRandom, Rng, RngCore, SeedableRng};
+use rand_pcg::Pcg64Mcg;
 
 fn main() {
     solve();
 }
 
-// CONTEST(abc213-e)
-#[fastout]
-fn solve() {
-    input! {h:us,w:us,s:[chars;h]}
-    type P = pt::Pt<i64>;
-    let g = grid::Grid::from(&s);
-    let mut a = grid::Grid::new(h, w, us::INF);
-    let mut q = bheap::new();
-    q.push((Reverse(0), P::new(0,0)));
-    while let Some((Reverse(c), v)) = q.pop() {
-        if a[v] != us::INF { continue; }
-        a[v] = c;
-        let s = v - P::new(-2,-2);
-        for i in 0..5 { for j in 0..5 {
-            match (i,j) {
-                (0,0)|(0,4)|(4,0)|(4,4) => continue,
-                _ => {},
+type P = Pt<us>;
+type G = GridV<Cell>;
+const LIMIT_MS: u128 = 1800;
+
+impl G {
+    fn swap_a(&mut self, x: P, y: P) {
+        let t = self[x].a;
+        self[x].a = self[y].a;
+        self[y].a = t;
+    }
+
+    fn eval_all(&self) -> i64 {
+        let mut s = 0;
+        for (i,j) in iproduct!(0..self.h,0..self.w) {
+            let p = P::new(i,j);
+            for &d in &self[p].dirs {
+                s += self[p].eval(&self[p.next(d)]);
             }
-            let u = s + P::new(i,j);
-            if 0<=u.x && u.x<h.i64() && 0<=u.y && u.y<w.i64() { 
-                if g[u] == '.' { q.push((Reverse(c), u)); }
-                else { q.push((Reverse(c+1), u)); }
+        }
+        s
+    }
+}
+
+impl P {
+    fn next_d(self, d: Option<Dir>) -> P {
+        if d.is_some() { self.next(d.unwrap()) } else { self }
+    }
+}
+
+struct Input {
+    st: Instant,
+    t: us,
+    n: us,
+    g: G,
+}
+
+impl Input {
+    fn new() -> Self {
+        let st = Instant::now();
+        input! {t:us,n:us,v:[chars;n],h:[chars;n-1],a:[[i64;n];n]}
+
+        let mut g = G::new(n, n);
+        for i in 0..n { for j in 0..n {
+            let p = P::new(i,j);
+            g[p].a = a[p.x][p.y];
+            for dir in Dir::VAL4 {
+                let d = dir.p();
+                let np = p.wrapping_add(d);
+                if np.x >= n || np.y >= n { continue; }
+                let mn = P::new(min(p.x,np.x), min(p.y,np.y));
+                if d.x != 0 && mn.x < n-1 && h[mn.x][p.y]=='1' { continue; }
+                if d.y != 0 && mn.y < n-1 && v[p.x][mn.y]=='1' { continue; }
+                g[p].dirs.push(dir);
             }
         }}
-    }
-    println!("{}", a[h-1][w-1]);
 
+        Self {
+            st,
+            t,
+            n,
+            g,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct Node<T> {
+    children: Vec<Rc<Node<T>>>,
+    value: T,
+}
+
+impl<T> Node<T> {
+    fn new(value: T) -> Self {
+        Self {
+            children: vec![],
+            value,
+        }
+    }
+
+    fn push(&mut self, t: T) {
+        self.children.push(Rc::new(Node::new(t)));
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct Action {
+    s: us, // 交換するなら1, しないなら0
+    d: Option<Dir>, // 高橋君の移動先
+    e: Option<Dir>, // 青木君の移動先
+    score: i64, // 変化したスコア
+}
+
+impl Action {
+    fn format(&self) -> String {
+        format!("{} {} {}",
+            self.s,
+            self.d.map(|d|d.c()).unwrap_or('.'),
+            self.e.map(|d|d.c()).unwrap_or('.')
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct Out {
+    ini_x: P,
+    ini_y: P,
+    actions: Vec<Action>,
+    score: i64,
+}
+
+impl Out {
+    #[fastout]
+    fn print(&self) {
+        println!("{} {}", self.ini_x, self.ini_y);
+        for a in &self.actions { println!("{}", a.format()); }
+    }
+}
+
+struct State<'a> {
+    input: &'a Input,
+    g: G,
+    score: us,
+    out: Out,
+    x: P, // 高橋
+    y: P, // 青木
+    rng: Pcg64Mcg,
+    hurry: bool,
+    ncand: Vec<(i64,i64,Option<Dir>,Option<Dir>,P,P,Option<Dir>,Option<Dir>,P,P,Option<Dir>,Option<Dir>)>,
+}
+
+impl<'a> State<'a> {
+    fn new(input: &'a Input) -> Self {
+        Self {
+            input,
+            g: input.g.clone(),
+            score: 0,
+            out: Out::default(),
+            x: P::new(0,0),
+            y: P::new(0,0),
+            // rng: Pcg64Mcg::seed_from_u64(7),
+            rng: Pcg64Mcg::from_entropy(),
+            hurry: false,
+            ncand: vec![],
+        }
+    }
+
+    fn initialize(&mut self) {
+        let n = self.input.n;
+        let rng = &mut self.rng;
+        self.out.ini_x = P::new(rng.gen_range(0..n), rng.gen_range(0..n));
+        self.out.ini_y = P::new(rng.gen_range(0..n), rng.gen_range(0..n));
+        self.x = self.out.ini_x;
+        self.y = self.out.ini_y;
+    }
+
+    fn execute(&mut self) {
+        let input = self.input;
+        for i in 0..4 * input.n * input.n {
+            if i & 0xFF == 0 {
+                let elapsed = input.st.elapsed().as_millis();
+                if elapsed >= LIMIT_MS { break; }
+                if elapsed >= 1500 { self.hurry = true; }
+            }
+            self.execute_tern(i);
+        }
+    }
+
+    fn execute_tern(&mut self, tern: us) {
+        let input = self.input;
+        let mut act = Action::default();
+        let (x, y) = (self.x, self.y);
+        let e = self.eval_swap(x, y);
+        act.score = e;
+        // debug!(tern, e);
+        if e < 0 {
+            act.s = 1;
+            self.g.swap_a(x, y);
+        }
+
+        let mut c = if input.n <= 30 && !self.hurry {
+            self.find_best3(x, y)
+        } else {
+            self.find_best2(x, y)
+        };
+
+        if c.0 >= 0 {
+            c.1 = self.g[x].choose(&mut self.rng);
+            c.2 = self.g[y].choose(&mut self.rng);
+            self.ncand.clear();
+        }
+
+        act.d = c.1;
+        act.e = c.2;
+        self.x = x.next_d(act.d);
+        self.y = y.next_d(act.e);
+        self.out.actions.push(act);
+    }
+
+    fn find_best2(&self, x: P, y: P) -> (i64, Option<Dir>, Option<Dir>) {
+        let mut best = (i64::INF, None, None);
+        for &xd in &self.g[x].dirs2() { for &yd in &self.g[y].dirs2() {
+            let (nx, ny) = (x.next_d(xd), y.next_d(yd));
+            let s = self.eval_swap(nx,ny).min(0);
+            for &xd2 in &self.g[nx].dirs2() { for &yd2 in &self.g[ny].dirs2() {
+                let (nx2, ny2) = (nx.next_d(xd2), ny.next_d(yd2));
+                let s = s + self.eval_swap(nx2,ny2).min(0);
+                if chmin!(best.0, s) {
+                    best.1 = xd;
+                    best.2 = yd;
+                }
+            }}
+        }}
+        best
+    }
+
+    fn find_best3(&mut self, x: P, y: P) -> (i64, Option<Dir>, Option<Dir>) {
+        let mut cand = vec![];
+        if self.ncand.is_empty() {
+            for &xd in &self.g[x].dirs2() { for &yd in &self.g[y].dirs2() {
+                let (nx, ny) = (x.next_d(xd), y.next_d(yd));
+                let s = self.eval_swap(nx,ny).min(0);
+                for &xd2 in &self.g[nx].dirs2() { for &yd2 in &self.g[ny].dirs2() {
+                    let (nx2, ny2) = (nx.next_d(xd2), ny.next_d(yd2));
+                    let s2 = s + self.eval_swap(nx2,ny2).min(0);
+                    cand.push((s,s2,xd,yd,nx2,ny2,xd2,yd2));
+                }}
+            }}
+        } else {
+            for &(s2,s3,xd,yd,nx2,ny2,xd2,yd2,nx3,ny3,xd3,yd3) in &self.ncand {
+                cand.push((s2,s3,xd2,yd2,nx3,ny3,xd3,yd3));
+            }
+        }
+
+        self.ncand.clear();
+        let mut best = (i64::INF, None, None);
+        for (s,s2,xd,yd,nx2,ny2,xd2,yd2) in cand {
+            for &xd3 in &self.g[nx2].dirs2() { for &yd3 in &self.g[ny2].dirs2() {
+                let (nx3, ny3) = (nx2.next_d(xd3), ny2.next_d(yd3));
+                let t3 = self.eval_swap(nx3,ny3).min(0);
+                let s3 = s2 + t3;
+                self.ncand.push((s2,s2-s+t3,xd,yd,nx2,ny2,xd2,yd2,nx3,ny3,xd3,yd3));
+                if chmin!(best.0, s3) {
+                    best.1 = xd;
+                    best.2 = yd;
+                }
+            }}
+        }
+
+        if best.0 != i64::INF {
+            self.ncand.retain(|t|(t.2,t.3)==(best.1,best.2));
+        } else {
+            self.ncand.clear();
+        }
+        self.ncand.clear();
+        best
+    }
+
+    fn eval_swap(&self, x: P, y: P) -> i64 {
+        let cur = self.eval_p(x, self.g[x].a) + self.eval_p(y, self.g[y].a);
+        let nxt = self.eval_p(x, self.g[y].a) + self.eval_p(y, self.g[x].a);
+        nxt - cur
+    }
+
+    fn eval_p(&self, p: P, a: i64) -> i64 {
+        let mut s = 0;
+        for &d in &self.g[p].dirs {
+            s += self.g[p.next(d)].eval_a(a);
+        }
+        s
+    }
+
+}
+
+#[derive(Clone, Debug, Default)]
+struct Cell {
+    dirs: Vec<Dir>,
+    a: i64,
+}
+
+impl Cell {
+    fn eval(&self, c: &Cell) -> i64 { (self.a - c.a) * (self.a - c.a) }
+    fn eval_a(&self, a: i64) -> i64 { (self.a - a) * (self.a - a) }
+    fn choose(&self, rng: &mut impl RngCore) -> Option<Dir> {
+        let x = rng.gen_range(0..=self.dirs.len());
+        self.dirs.get(x).cloned()
+    }
+
+    fn dirs2(&self) -> Vec<Option<Dir>> {
+        self.dirs.iter().map(|&d|Some(d)).chain([None]).cv()
+    }
+}
+
+// CONTEST(abcXXX-a)
+// #[fastout]
+fn solve() {
+    let input = Input::new();
+    let mut best = Out::default();
+    best.score = i64::INF;
+    // let mut g = G::new(input.n, input.n);
+    let mut cnt = 0;
+    loop {
+        let elapsed = input.st.elapsed().as_millis();
+        if elapsed >= LIMIT_MS { break; }
+        cnt += 1;
+        let mut st = State::new(&input);
+        st.initialize();
+        st.execute();
+        let score = st.g.eval_all();
+        if best.score > score {
+            best = st.out.clone();
+            best.score = score;
+            // g = st.g;
+        }
+    }
+
+    best.print();
+    eprintln!("# T={},N={},CNT={},ACTIONS={}", input.t, input.n, cnt, best.actions.len());
+    // for i in 0..input.n {
+    //     eprintln!("{}", fmt!(g[i].iter().map(|c|c.a).cv()));
+    // }
 }
 
 // #CAP(fumin::modint)
 pub mod fumin {
-pub mod grid {
+pub mod grid_v {
 #![allow(dead_code)]
-use std::ops::{Index, IndexMut};
-use itertools::iproduct;
+use std::{ops::{Index, IndexMut}, cmp::Reverse};
 
-use crate::common::*;
+use crate::{common::*, chmin};
 use super::pt::{Pt, Dir};
 
 
-pub struct Grid<T>(pub Vec<Vec<T>>);
+#[derive(Clone)]
+pub struct GridV<T> {
+    pub g: Vec<T>,
+    pub h: us,
+    pub w: us,
+}
 
-impl<T: Clone> Grid<T> {
-    pub fn new(h: us, w: us, v: T) -> Self { Self::from(&vec![vec![v; w]; h]) }
+impl <T> GridV<T>
+where
+    T: Clone + Default {
+    pub fn new(h: us, w: us) -> Self {
+        Self { g: vec![T::default(); h * w], h, w, }
+    }
+    pub fn with_default(h: us, w: us, v: T) -> Self {
+        Self { g: vec![v; h * w], h, w, }
+    }
+    pub fn is_in_p<N: IntoT<us>>(&self, p: Pt<N>) -> bool { self.is_in_t(p.tuple()) }
+    pub fn is_in_t<N: IntoT<us>>(&self, t: (N, N)) -> bool { t.0.into_t() < self.h && t.1.into_t() < self.w }
 }
-impl<T> Grid<T> {
-    pub fn h(&self) -> us { self.0.len() }
-    pub fn w(&self) -> us { self.0[0].len() }
-    pub fn is_in_p(&self, p: Pt<us>) -> bool { self.is_in_t(p.tuple()) }
-    pub fn is_in_t(&self, t: (us,us)) -> bool { t.0 < self.h() && t.1 < self.w() }
-}
-impl<T: Clone+Eq> Grid<T> {
-    pub fn position(&self, t: &T) -> Option<Pt<us>> {
-        iproduct!(0..self.h(), 0..self.w()).into_iter().map(|(i,j)|Pt::<us>::new(i,j)).filter(|&p|self[p]==*t).next()
+
+impl<T, N: IntoT<us>> Index<N> for GridV<T> {
+    type Output = [T];
+    fn index(&self, i: N) -> &Self::Output {
+        let idx = i.into_t() * self.h;
+        &self.g[idx..idx+self.w]
     }
 }
-impl<T: Clone> From<&Vec<Vec<T>>> for Grid<T> {
-    fn from(v: &Vec<Vec<T>>) -> Self { Self(v.to_vec()) }
+impl<T, N: IntoT<us>> IndexMut<N> for GridV<T> {
+    fn index_mut(&mut self, i: N) -> &mut Self::Output {
+        let idx = i.into_t() * self.h;
+        &mut self.g[idx..idx+self.w]
+    }
 }
-impl<T, N: IntoT<us>> Index<Pt<N>> for Grid<T> {
+
+impl<T, N: IntoT<us>> Index<(N,N)> for GridV<T> {
+    type Output = T;
+    fn index(&self, index: (N,N)) -> &Self::Output { &self[index.0.into_t()][index.1.into_t()] }
+}
+impl<T, N: IntoT<us>> IndexMut<(N,N)> for GridV<T> {
+    fn index_mut(&mut self, index: (N,N)) -> &mut Self::Output { &mut self[index.0.into_t()][index.1.into_t()] }
+}
+impl<T, N: IntoT<us>> Index<Pt<N>> for GridV<T> {
     type Output = T;
     fn index(&self, p: Pt<N>) -> &Self::Output { &self[p.tuple()] }
 }
-impl<T, N: IntoT<us>> IndexMut<Pt<N>> for Grid<T> {
+impl<T, N: IntoT<us>> IndexMut<Pt<N>> for GridV<T> {
     fn index_mut(&mut self, p: Pt<N>) -> &mut Self::Output { &mut self[p.tuple()] }
 }
-impl<T, N: IntoT<us>> Index<(N,N)> for Grid<T> {
-    type Output = T;
-    fn index(&self, p: (N,N)) -> &Self::Output { &self.0[p.0.us()][p.1.us()] }
+impl<T: Clone> From<&Vec<Vec<T>>> for GridV<T> {
+    fn from(value: &Vec<Vec<T>>) -> Self {
+        let (h, w) = (value.len(), value[0].len());
+        GridV{ g: value.iter().cloned().flatten().cv(), h, w }
+    }
 }
-impl<T, N: IntoT<us>> IndexMut<(N,N)> for Grid<T> {
-    fn index_mut(&mut self, p: (N,N)) -> &mut Self::Output { &mut self.0[p.0.us()][p.1.us()] }
+
+pub struct ShortestPath {
+    pub start: Pt<us>,
+    pub dist: GridV<i64>,
+    pub prev: GridV<Pt<us>>,
 }
-impl<T, N: IntoT<us>> Index<N> for Grid<T> {
-    type Output = Vec<T>;
-    fn index(&self, p: N) -> &Self::Output { &self.0[p.us()] }
+
+impl ShortestPath {
+    pub fn restore_shortest_path(&self, mut t: Pt<us>) -> Vec<Pt<us>> {
+        let mut ps = vec![];
+        while t != Pt::<us>::INF { ps.push(t); t = self.prev[t]; }
+        ps.reverse();
+        assert!(ps[0] == self.start);
+        ps
+    }
 }
-impl<T, N: IntoT<us>> IndexMut<N> for Grid<T> {
-    fn index_mut(&mut self, p: N) -> &mut Self::Output { &mut self.0[p.us()] }
-}
-impl Grid<char> {
-    pub fn bfs(&self, s: Pt<us>) -> Grid<us> {
+
+impl GridV<char> {
+    // まだあまり動かしてないので、そのうちテスト必要
+    pub fn bfs(&self, s: Pt<us>) -> ShortestPath {
         let mut que = deque::new();
-        let mut m = Grid::new(self.h(), self.w(), us::INF);
+        let mut ret = ShortestPath {
+            start: s,
+            dist: GridV::with_default(self.h, self.w, i64::INF),
+            prev: GridV::with_default(self.h, self.w, Pt::<us>::INF),
+        };
         que.push_back(s);
-        m[s] = 0;
+        ret.dist[s] = 0;
         while let Some(v) = que.pop_front() {
             for d in Dir::VAL4 {
                 let nv = v.next(d);
-                if self.is_in_p(nv) && self[nv]!='#' && m[nv]==us::INF {
-                    m[nv] = m[v]+1;
+                if self.is_in_p(nv) && self[nv]!='#' && ret.dist[nv]==i64::INF {
+                    ret.dist[nv] = ret.dist[v]+1;
+                    ret.prev[nv] = v;
                     que.push_back(nv);
                 }
             }
         }
-        m
+        ret
+    }
+}
+
+
+pub trait CellTrait {
+    fn cost(&self, d: Dir) -> Option<i64>;
+}
+
+impl<T: CellTrait> GridV<T> {
+    pub fn dijkstra(&self, s: Pt<us>) -> ShortestPath {
+        type P = Pt<us>;
+        let mut ret = ShortestPath {
+            start: s,
+            dist: GridV::with_default(self.h,self.w,i64::INF),
+            prev: GridV::with_default(self.h,self.w,P::INF),
+        };
+        let mut q = bheap::new();
+        q.push(Reverse((0,s)));
+        ret.dist[s] = 0;
+        while let Some(Reverse((cost, v))) = q.pop() {
+            if ret.dist[v] < cost { continue; }
+            for d in Dir::VAL4 {
+                let Some(c) = self[v].cost(d) else { continue; };
+                let nv = v.next(d);
+                let nc = cost + c;
+                if chmin!(ret.dist[nv], nc) {
+                    q.push(Reverse((nc, nv)));
+                    ret.prev[nv] = v;
+                }
+            }
+        }
+        ret
     }
 }
 }
@@ -672,6 +1035,5 @@ pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
 pub fn no(b: bool) -> &'static str { yes(!b) }
 pub fn No(b: bool) -> &'static str { Yes(!b) }
 pub fn NO(b: bool) -> &'static str { YES(!b) }
-
 
 }

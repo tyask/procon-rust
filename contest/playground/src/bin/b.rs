@@ -1,5 +1,7 @@
 #![allow(unused_imports)]
-use std::{*, collections::*, ops::*, cmp::*, iter::*};
+use std::{cmp::*, collections::*, fmt::format, iter::*, ops::*, *};
+use itertools::Itertools;
+use superslice::*;
 use proconio::{input, fastout};
 use common::*;
 use fumin::*;
@@ -8,9 +10,38 @@ fn main() {
     solve();
 }
 
-// CONTEST(abcXXX-a)
+// CONTEST(abc214-e)
 #[fastout]
 fn solve() {
+    input! {t:us}
+    for _ in 0..t {
+        input! {n:us,lr:[(us,us);n]}
+        let mut m = map::new();
+        for &(l,r) in &lr { m.entry(l).or_insert_with(||Vec::new()).push(r); }
+        let mut ks = deque::from(m.keys().sorted().cv());
+        let mut q = bheap::new();
+        let mut ans = true;
+        let mut i = 1;
+        'A: while i <= 1_000_000_000 {
+            if q.is_empty() && ks.is_empty() { break; }
+            if let Some(v) = m.get(&i) {
+                for &r in v { q.push(Reverse(r)); }
+                ks.pop_front();
+            } else if q.is_empty() {
+                if let Some(&k) = ks.pop_front() {
+                    i = k;
+                    for &r in &m[&i] { q.push(Reverse(r)); }
+                }
+            }
+
+            while let Some(Reverse(r)) = q.pop() {
+                if r < i { ans = false; break 'A; }
+                i += 1;
+            }
+        }
+
+        println!("{}", Yes(ans));
+    }
 }
 
 // #CAP(fumin::modint)
@@ -131,11 +162,11 @@ impl Inf for i64 {
 }
 
 pub trait Wrapping {
-    fn wraping_add(self, a: Self) -> Self;
+    fn wrapping_add(self, a: Self) -> Self;
 }
-impl Wrapping for us  { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
-impl Wrapping for is  { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
-impl Wrapping for i64 { fn wraping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
+impl Wrapping for us  { fn wrapping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
+impl Wrapping for is  { fn wrapping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
+impl Wrapping for i64 { fn wrapping_add(self, a: Self) -> Self { self.wrapping_add(a) } }
 
 // Utilities
 #[macro_export] macro_rules! or    { ($cond:expr;$a:expr,$b:expr) => { if $cond { $a } else { $b } }; }
@@ -178,6 +209,14 @@ pub trait IterTrait : Iterator {
         self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
+
+    fn shuffled(self, rng: &mut impl rand_core::RngCore) -> vec::IntoIter<Self::Item> where Self: Sized {
+        use rand::seq::SliceRandom;
+        let mut v = Vec::from_iter(self);
+        v.shuffle(rng);
+        v.into_iter()
+    }
+
 }
 
 pub struct CountIter<I: Iterator, C> {
@@ -232,31 +271,42 @@ impl<I, T, U> PairOrdIterTrait<T, U>  for I where I: Iterator<Item=(T,U)>, T: Or
 
 
 // Vec
-pub trait VecFill<T>   { fn fill(&mut self, t: T); }
-pub trait VecCount<T>  { fn count(&self, f: impl FnMut(&T)->bool) -> us; }
-pub trait VecMax<T>    { fn vmax(&self) -> T; }
-pub trait VecMin<T>    { fn vmin(&self) -> T; }
-pub trait VecSum<T>    { fn sum(&self) -> T; }
-pub trait VecStr<T>    { fn str(&self) -> Str; }
-pub trait VecMap<T>    { fn map<U>(&self, f: impl FnMut(&T)->U) -> Vec<U>; }
-pub trait VecPos<T>    { fn pos(&self, t: &T) -> Option<us>; }
-pub trait VecRpos<T>    { fn rpos(&self, t: &T) -> Option<us>; }
+pub trait VecFill<T> { fn fill(&mut self, t: T); }
+impl<T:Clone> VecFill<T> for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
 
-impl<T:Clone>        VecFill<T>  for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
-impl<T>              VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
-impl<T:Clone+Ord>    VecMax<T>   for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
-impl<T:Clone+Ord>    VecMin<T>   for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
-impl<T:Clone+Sum<T>> VecSum<T>   for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
-impl<T:ToString>     VecStr<T>   for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
-impl<T>              VecMap<T>   for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
-impl<T:Eq>           VecPos<T>   for [T] { fn pos(&self, t: &T) -> Option<us> { self.iter().position(|x|x==t) } }
-impl<T:Eq>           VecRpos<T>  for [T] { fn rpos(&self, t: &T) -> Option<us> { self.iter().rposition(|x|x==t) } }
+pub trait VecCount<T> { fn count(&self, f: impl FnMut(&T)->bool) -> us; }
+impl<T> VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
+
+pub trait VecMax<T> { fn vmax(&self) -> T; }
+impl<T:Clone+Ord> VecMax<T> for [T] { fn vmax(&self) -> T  { self.iter().cloned().max().unwrap() } }
+
+pub trait VecMin<T> { fn vmin(&self) -> T; }
+impl<T:Clone+Ord> VecMin<T> for [T] { fn vmin(&self) -> T  { self.iter().cloned().min().unwrap() } }
+
+pub trait VecSum<T> { fn sum(&self) -> T; }
+impl<T:Clone+Sum<T>> VecSum<T> for [T] { fn sum(&self)  -> T  { self.iter().cloned().sum::<T>() } }
+
+pub trait VecStr<T> { fn str(&self) -> Str; }
+impl<T:ToString> VecStr<T> for [T] { fn str(&self)  -> Str { self.iter().map(|x|x.to_string()).collect::<Str>() } }
+
+pub trait VecMap<T> { fn map<U>(&self, f: impl FnMut(&T)->U) -> Vec<U>; }
+impl<T> VecMap<T> for [T] { fn map<U>(&self, mut f: impl FnMut(&T)->U) -> Vec<U> { self.iter().map(|x|f(x)).cv() } }
+
+pub trait VecPos<T> { fn pos(&self, t: &T) -> Option<us>; }
+impl<T:Eq> VecPos<T> for [T] { fn pos(&self, t: &T) -> Option<us> { self.iter().position(|x|x==t) } }
+
+pub trait VecRpos<T> { fn rpos(&self, t: &T) -> Option<us>; }
+impl<T:Eq> VecRpos<T> for [T] { fn rpos(&self, t: &T) -> Option<us> { self.iter().rposition(|x|x==t) } }
+
+pub trait VecSet<T> { fn set(&mut self, i: us, t: T) -> T; }
+impl<T> VecSet<T> for [T] { fn set(&mut self, i: us, mut t: T) -> T { std::mem::swap(&mut self[i], &mut t); t } }
 
 // Deque
 pub trait DequePush<T> { fn push(&mut self, t: T); }
-pub trait DequePop<T> { fn pop(&mut self) -> Option<T>; }
 impl<T> DequePush<T> for VecDeque<T> { fn push(&mut self, t: T) { self.push_back(t); } }
-impl<T> DequePop<T>  for VecDeque<T> { fn pop(&mut self) -> Option<T> { self.pop_back() } }
+
+pub trait DequePop<T> { fn pop(&mut self) -> Option<T>; }
+impl<T> DequePop<T> for VecDeque<T> { fn pop(&mut self) -> Option<T> { self.pop_back() } }
 
 // Map
 pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
@@ -356,30 +406,28 @@ fmt_primitive! {
 
 impl<T: Fmt> Fmt for [T]         { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 impl<T: Fmt> Fmt for VecDeque<T> { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
+impl<T: Fmt> Fmt for set<T>      { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
+impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e| e.fmt()).join(" ") } }
 
 #[macro_export] macro_rules! fmt {
-    ($a:expr, $($b:expr),*)       => {{ format!("{} {}", fmt!(($a)), fmt!($($b),*)) }};
-    ($a:expr)                     => {{ ($a).fmt() }};
+    ($a:expr, $($b:expr),*) => {{ format!("{} {}", fmt!(($a)), fmt!($($b),*)) }};
+    ($a:expr)               => {{ ($a).fmt() }};
 
     (@debug $a:expr, $($b:expr),*) => {{ format!("{} {}", fmt!(@debug ($a)), fmt!(@debug $($b),*)) }};
     (@debug $a:expr)               => {{ format!("{:?}", ($a)) }};
-
-    (@line $a:expr, $($b:expr),*) => {{ format!("{}\n{}", fmt!(@line $a), fmt!(@line $($b),*)) }};
-    (@line $a:expr)               => {{ ($a).fmt() }};
-
-    (@byline $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|e| e.fmt()).join("\n") }};
-    (@grid   $a:expr) => {{ use itertools::Itertools; ($a).iter().map(|v| v.iter().collect::<Str>()).join("\n") }};
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
     ($($a:expr),*)    => { eprintln!("{}", fmt!(@debug  $($a),*)); };
-    (@byline $a:expr) => { eprintln!("{}", fmt!(@byline $a)); };
-    (@grid   $a:expr) => { eprintln!("{}", fmt!(@grid   $a)); };
 }
 #[macro_export]#[cfg(not(feature="local"))] macro_rules! debug {
     ($($a:expr),*)    => { };
-    (@byline $a:expr) => { };
-    (@grid   $a:expr) => { };
+}
+#[macro_export]#[cfg(feature="local")] macro_rules! debug2d {
+    ($a:expr) => { for v in &($a) { eprintln!("{:?}", v); } };
+}
+#[macro_export]#[cfg(not(feature="local"))] macro_rules! debug2d {
+    ($a:expr) => { };
 }
 
 pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
