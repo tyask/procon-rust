@@ -366,6 +366,21 @@ impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e|
     (@debug $a:expr)               => {{ format!("{:?}", ($a)) }};
 }
 
+#[macro_export] macro_rules! vprintln {
+    ($a:expr) => { for x in &($a) { println!("{}", x); } };
+}
+#[macro_export] macro_rules! vprintsp {
+    ($a:expr) => {
+        {
+            use itertools::Itertools;
+            println!("{}", ($a).iter().join(" "));
+        }
+    }
+}
+#[macro_export] macro_rules! print_grid {
+    ($a:expr) => { for v in &($a) { println!("{}", v.iter().collect::<Str>()); } };
+}
+
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
     ($($a:expr),*)    => { eprintln!("{}", fmt!(@debug  $($a),*)); };
 }

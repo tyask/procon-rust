@@ -16,7 +16,7 @@ impl Osak {
             for j in (i..=n).step_by(i) { chmin!(minfactor[j], i); }
             i += 1;
         }
-        Self { minfactor: minfactor }
+        Self { minfactor }
     }
 
     pub fn prime_fact(&self, mut k: us) -> bmap<us, us> {

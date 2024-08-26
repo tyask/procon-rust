@@ -31,6 +31,8 @@ impl Pt<us> {
     pub fn wrapping_sub(self, a: Self) -> Self { Self::of(self.x.wrapping_sub(a.x), self.y.wrapping_sub(a.y)) }
     pub fn wrapping_mul(self, a: Self) -> Self { Self::of(self.x.wrapping_mul(a.x), self.y.wrapping_mul(a.y)) }
     pub fn next(self, d: Dir) -> Self { self.wrapping_add(d.p()) }
+    pub fn iter_next_4d(self) -> impl Iterator<Item=Self> { Dir::VAL4.iter().map(move|&d|self.next(d)) }
+    pub fn iter_next_8d(self) -> impl Iterator<Item=Self> { Dir::VALS.iter().map(move|&d|self.next(d)) }
     pub fn prev(self, d: Dir) -> Self { self.wrapping_sub(d.p()) }
 }
 
