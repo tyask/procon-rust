@@ -20,7 +20,23 @@
 			"type": "shell",
 			"args": [
 				"../../tools/compete_dt.py",
+				"--src",
 				"'${file}'",
+			],
+			"options": {
+				"cwd": "${fileDirname}/../.."
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Cargo Compete DT (Force Download)",
+			"command": "python",
+			"type": "shell",
+			"args": [
+				"../../tools/compete_dt.py",
+				"--src",
+				"'${file}'",
+				"--force-download"
 			],
 			"options": {
 				"cwd": "${fileDirname}/../.."
