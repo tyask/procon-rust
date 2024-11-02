@@ -136,6 +136,22 @@ impl<N: Copy+IntoT<us>+Zero+One+AddAssign> Combination<N> {
     }
 }
 
+// 2次元配列を右に90度回転させる
+fn rot_right<T:Clone>(v: &[Vec<T>]) -> Vec<Vec<T>> {
+    let (h, w) = (v.len(), v[0].len());
+    let mut a = vec![vec![v[0][0].clone(); h]; w];
+    for i in 0..h { for j in 0..w { a[j][h-1-i]=v[i][j].clone(); }}
+    a
+}
+
+// 2次元配列を左に90度回転させる
+fn rot_left<T:Clone>(v: &[Vec<T>]) -> Vec<Vec<T>> {
+    let (h, w) = (v.len(), v[0].len());
+    let mut a = vec![vec![v[0][0].clone(); h]; w];
+    for i in 0..h { for j in 0..w { a[w-j-1][i]=v[i][j].clone(); }}
+    a
+}
+
 pub fn on_thread<F: FnOnce()->()+Send+'static>(f: F) {
     // 再帰が深いなどスタックサイズが足りない場合はこのメソッドを利用する.
     std::thread::Builder::new()

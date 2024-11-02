@@ -31,7 +31,7 @@ impl WarshallFloyd {
     }
 
     pub fn add(&mut self, e: Edge) {
-        self.dist[e.a][e.b] = e.cost;
+        chmin!(self.dist[e.a][e.b], e.cost);
     }
     pub fn add_each(&mut self, e: Edge) {
         self.add(e);

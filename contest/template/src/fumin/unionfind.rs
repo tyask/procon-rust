@@ -14,34 +14,34 @@ impl Unionfind {
         uf
     }
 
-    pub fn leader(&mut self, x: us) -> us {
+    pub fn root(&mut self, x: us) -> us {
         if self.d[x] < 0 {
             x
         } else {
-            self.d[x] = self.leader(self.d[x] as us) as i64;
+            self.d[x] = self.root(self.d[x] as us) as i64;
             self.d[x] as us
         }
     }
 
     pub fn unite(&mut self, x: usize, y: usize) -> bool {
-        let (mut x, mut y) = (self.leader(x), self.leader(y));
+        let (mut x, mut y) = (self.root(x), self.root(y));
         if x == y { return false }
         if self.d[x] > self.d[y] { std::mem::swap(&mut x, &mut y) }
         self.d[x] += self.d[y];
         self.d[y] = x as i64;
         true
     }
-    pub fn same(&mut self, x: us, y: us) -> bool { self.leader(x) == self.leader(y) }
-    pub fn size(&mut self, x: us) -> us { let p = self.leader(x); -self.d[p] as us }
+    pub fn same(&mut self, x: us, y: us) -> bool { self.root(x) == self.root(y) }
+    pub fn size(&mut self, x: us) -> us { let p = self.root(x); -self.d[p] as us }
 }
 
 impl Unionfind {
     pub fn groups(&mut self) -> Vec<Vec<us>> {
         let n = self.d.len();
-        let (mut leader_buf, mut group_size, mut res) = (vec![0; n], vec![0; n], vec![vec![]; n]);
-        for i in 0..n { leader_buf[i] = self.leader(i); group_size[leader_buf[i]]+=1; }
+        let (mut root_buf, mut group_size, mut res) = (vec![0; n], vec![0; n], vec![vec![]; n]);
+        for i in 0..n { root_buf[i] = self.root(i); group_size[root_buf[i]]+=1; }
         for i in 0..n { res[i].reserve(group_size[i]); }
-        for i in 0..n { res[leader_buf[i]].push(i); }
+        for i in 0..n { res[root_buf[i]].push(i); }
         res.iter().filter(|v|v.len()>0).cloned().cv()
     }
 }

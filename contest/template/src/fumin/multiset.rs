@@ -53,7 +53,7 @@ impl<V:Clone+Copy+Ord> MultiSet<V> {
     }
 
     pub fn count(&self, v: &V) -> us {
-        self.0.or_def(v)
+        self.0.get(v).cloned().unwrap_or_default()
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item=&V> {

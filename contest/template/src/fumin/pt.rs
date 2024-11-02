@@ -8,8 +8,14 @@ use crate::{common::*, enrich_enum, count};
 // CAP(fumin::enrich_enum)
 
 // Pt
-#[derive(Debug,Copy,Clone,PartialEq,Eq,PartialOrd,Ord,Hash,Default)]
+#[derive(Copy,Clone,PartialEq,Eq,PartialOrd,Ord,Hash,Default)]
 pub struct Pt<N> { pub x: N, pub y: N }
+
+impl<N:fmt::Display> fmt::Debug for Pt<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
+    }
+}
 
 impl<N> Pt<N> {
     pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Pt<N> { Pt{x:x.into_t(), y:y.into_t()} }

@@ -163,6 +163,24 @@ impl<T: Copy + Ord + Zero + ops::BitOr<Output=T>> Monoid for BitOr<T> {
     fn e() -> Self::T { T::zero() }
 }
 
+// P: 序数 基本的に適当な大きめの素数で良いが、有名な素数だと撃墜される可能性あるので注意.
+pub struct RollingHash<const P:u64 = 998244353>(Infallible);
+impl<const P: u64> Monoid for RollingHash<P> {
+    // 基数はPより小さい値であればだいたいなんでも良い。
+    // 普通はランダムな値に決めることが多いが、例えば10とかでもOK
+    type T = (u64, u64); // (hash, 基数の累乗)
+
+    fn op(a: Self::T, b: Self::T) -> Self::T {
+        let (ha, xa) = a;
+        let (hb, xb) = b;
+        ((ha * xb + hb)%P, xa*xb%P)
+    }
+
+    fn e() -> Self::T { (0, 1) }
+}
+
+
+
 fn ceilpow2(n: us) -> us { std::mem::size_of::<us>() * 8 - n.saturating_sub(1).leading_zeros().us() }
 
 // CAP(IGNORE_BELOW)

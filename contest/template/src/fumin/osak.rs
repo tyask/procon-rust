@@ -25,7 +25,7 @@ impl Osak {
         let mf = &self.minfactor;
         let mut m = bmap::new();
         while k > 1 {
-            *m.or_def_mut(&mf[k]) += 1;
+            *m.entry(mf[k]).or_default() += 1;
             k /= mf[k];
         }
         m
