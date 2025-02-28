@@ -57,7 +57,7 @@ pub fn runlength_encoding<T:PartialEq+Copy>(v: &[T]) -> Vec<(T, us)> {
     let mut a = Vec::new();
     for i in 0..v.len() {
         if i==0 || v[i-1]!=v[i] { a.push((v[i],0)) }
-        let n = a.len(); a[n-1].1 += 1;
+        a.last_mut().unwrap().1 += 1;
     }
     a
 }

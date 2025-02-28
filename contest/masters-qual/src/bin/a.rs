@@ -1,336 +1,508 @@
 #![allow(unused_imports)]
-use std::{cmp::*, collections::*, iter::*, mem::swap, ops::*, rc::Rc, time::Instant, *};
+use std::{*, collections::*, ops::*, cmp::*, iter::*};
+use bounded_sorted_list::BoundedSortedList;
+use fast_bit_set::FastBitSet2d;
+use grid_v::GridV;
 use itertools::{iproduct, Itertools};
 use proconio::{input, fastout};
 use common::*;
-use fumin::{grid_v::GridV, pt::{Dir, Pt}, *};
-use rand::{seq::IteratorRandom, Rng, RngCore, SeedableRng};
-use rand_pcg::Pcg64Mcg;
+use fumin::*;
+use pt::Dir;
+use rand::{seq::{IteratorRandom, SliceRandom}, RngCore, SeedableRng};
 
 fn main() {
     solve();
 }
 
-type P = Pt<us>;
-type G = GridV<Cell>;
-const LIMIT_MS: u128 = 1800;
-
-impl G {
-    fn swap_a(&mut self, x: P, y: P) {
-        let t = self[x].a;
-        self[x].a = self[y].a;
-        self[y].a = t;
-    }
-
-    fn eval_all(&self) -> i64 {
-        let mut s = 0;
-        for (i,j) in iproduct!(0..self.h,0..self.w) {
-            let p = P::new(i,j);
-            for &d in &self[p].dirs {
-                s += self[p].eval(&self[p.next(d)]);
-            }
-        }
-        s
-    }
-}
+type P = pt::Pt<us>;
+const DS: [(us,us);5] = [(0,1),(0,!0),(1,0),(!0,0),(0,0)];
+const DC: [char;5] = ['R','L','D','U','.'];
 
 impl P {
-    fn next_d(self, d: Option<Dir>) -> P {
-        if d.is_some() { self.next(d.unwrap()) } else { self }
+    fn next_d(self, d:(us,us)) -> P {
+        P::new(self.x.wrapping_add(d.0), self.y.wrapping_add(d.1))
     }
 }
 
-struct Input {
-    st: Instant,
-    t: us,
-    n: us,
-    g: G,
+struct Io {
+    _t:us,
+    max_tern: us,
+    n:us,
+    g:GridV<Cell>,
+    max_dist: us,
+    zobrist: zobrist_hash::ZobristHash2d,
 }
 
-impl Input {
-    fn new() -> Self {
-        let st = Instant::now();
+impl Io {
+    fn new(rng: &mut impl rand_core::RngCore) -> Self {
         input! {t:us,n:us,v:[chars;n],h:[chars;n-1],a:[[i64;n];n]}
-
-        let mut g = G::new(n, n);
+        let mut g = GridV::with_default(n,n,Cell{a:0,can_move:[true;5]});
         for i in 0..n { for j in 0..n {
-            let p = P::new(i,j);
-            g[p].a = a[p.x][p.y];
-            for dir in Dir::VAL4 {
-                let d = dir.p();
-                let np = p.wrapping_add(d);
-                if np.x >= n || np.y >= n { continue; }
-                let mn = P::new(min(p.x,np.x), min(p.y,np.y));
-                if d.x != 0 && mn.x < n-1 && h[mn.x][p.y]=='1' { continue; }
-                if d.y != 0 && mn.y < n-1 && v[p.x][mn.y]=='1' { continue; }
-                g[p].dirs.push(dir);
+            let v = P::new(i,j);
+            for i in 0..4 {
+                let nv = v.next_d(DS[i]);
+                if !g.is_in_p(nv) { g[v].can_move[i] = false; }
             }
         }}
-
+        for i in 0..n { for j in 0..n-1 {
+            if v[i][j]=='1' {
+                g[i][j].can_move[DC.pos(&'R').unwrap()] = false;
+                g[i][j+1].can_move[DC.pos(&'L').unwrap()] = false;
+            }
+        }}
+        for i in 0..n-1 { for j in 0..n {
+            if h[i][j]=='1' {
+                g[i][j].can_move[DC.pos(&'D').unwrap()] = false;
+                g[i+1][j].can_move[DC.pos(&'U').unwrap()] = false;
+            }
+        }}
+        for i in 0..n { for j in 0..n { g[i][j].a = a[i][j]; }}
+        let max_tern = n * n * 4 - 1;
+        let max_dist = if n <= 10 {
+            20
+            // f64::sqrt((100_000_000 / (max_tern * 2)).f64()) as us
+            // f64::sqrt(f64::sqrt((100_000_000 / (max_tern * 2)).f64())) as us
+        } else if n <= 20 {
+            5
+        } else {
+            f64::sqrt(f64::sqrt((100_000_000 / (max_tern * 2)).f64())) as us
+        };
+        // let max_dist = 10;
+        let zobrist = zobrist_hash::ZobristHash2d::new(n, n, rng);
+        debug!(n, max_dist);
         Self {
-            st,
-            t,
+            _t:t,
+            max_tern: n * n * 4 - 1,
             n,
             g,
+            max_dist,
+            zobrist,
         }
     }
 }
 
-#[derive(Debug, Clone, Default)]
-struct Node<T> {
-    children: Vec<Rc<Node<T>>>,
-    value: T,
+
+struct Result {
+    p0: P,
+    p1: P,
+    score:i64,
+    next_actions: Vec<NextAction>,
 }
 
-impl<T> Node<T> {
-    fn new(value: T) -> Self {
-        Self {
-            children: vec![],
-            value,
+impl Result {
+    fn push(&mut self, a: NextAction) {
+        self.score += a.score;
+        self.next_actions.push(a);
+    }
+    fn out(&self, io: &Io) {
+        println!("{} {}", self.p0, self.p1);
+        print!("0");
+        let mut p0 = self.p0;
+        let mut p1 = self.p1;
+        let mut cnt = 0;
+        for a in &self.next_actions {
+            let ps0 = Path::for_restore_path(&io.g, p0, a.required_tern);
+            let ps1 = Path::for_restore_path(&io.g, p1, a.required_tern);
+            let acts = self.create_actions(a.v0, a.v1, &ps0, &ps1);
+            cnt += acts.len();
+            for a in acts {
+                println!(" {} {}", DC[a.d0], DC[a.d1]);
+                print!("{}", a.swap);
+            }
+            p0 = a.v0;
+            p1 = a.v1;
         }
+        for _ in 0..io.max_tern-cnt {
+            println!(" . .");
+            print!("0");
+        }
+        println!(" . .", );
     }
 
-    fn push(&mut self, t: T) {
-        self.children.push(Rc::new(Node::new(t)));
+    fn create_actions(&self, v0: P, v1: P, ps0: &Path, ps1: &Path) -> Vec<Action> {
+        let rt0 = &ps0.restore(v0);
+        let rt1 = &ps1.restore(v1);
+        let tern = rt0.len().max(rt1.len()) - 1;
+        let mut a0 = vec![];
+        let mut a1 = vec![];
+        for (&a,&b) in rt0.into_iter().tuple_windows() {
+            a0.push(DS.pos(&b.wrapping_sub(a).tuple()).unwrap());
+        }
+        for (&a,&b) in rt1.into_iter().tuple_windows() {
+            a1.push(DS.pos(&b.wrapping_sub(a).tuple()).unwrap());
+        }
+        let mut actions = vec![];
+        for i in 0..tern {
+            let mut a = Action { d0:4, d1:4, swap:0, score:0 };
+            if i < a0.len() { a.d0 = a0[i]; }
+            if i < a1.len() { a.d1 = a1[i]; }
+            if i == tern-1 { a.swap = 1; }
+            actions.push(a);
+        }
+        actions
     }
+
+
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Cell {
+    a: i64,
+    can_move: [bool; 5],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Action {
-    s: us, // 交換するなら1, しないなら0
-    d: Option<Dir>, // 高橋君の移動先
-    e: Option<Dir>, // 青木君の移動先
-    score: i64, // 変化したスコア
-}
-
-impl Action {
-    fn format(&self) -> String {
-        format!("{} {} {}",
-            self.s,
-            self.d.map(|d|d.c()).unwrap_or('.'),
-            self.e.map(|d|d.c()).unwrap_or('.')
-        )
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-struct Out {
-    ini_x: P,
-    ini_y: P,
-    actions: Vec<Action>,
+    d0: us,
+    d1: us,
+    swap: u8,
     score: i64,
 }
 
-impl Out {
-    #[fastout]
-    fn print(&self) {
-        println!("{} {}", self.ini_x, self.ini_y);
-        for a in &self.actions { println!("{}", a.format()); }
-    }
+#[derive(Debug, Clone)]
+struct NextAction {
+    p0: P,
+    p1: P,
+    v0: P,
+    v1: P,
+    score: i64,
+    required_tern: us,
 }
 
-struct State<'a> {
-    input: &'a Input,
-    g: G,
-    score: us,
-    out: Out,
-    x: P, // 高橋
-    y: P, // 青木
-    rng: Pcg64Mcg,
-    hurry: bool,
-    ncand: Vec<(i64,i64,Option<Dir>,Option<Dir>,P,P,Option<Dir>,Option<Dir>,P,P,Option<Dir>,Option<Dir>)>,
+struct Path {
+    dist: Vec<(P, i64)>,
+    prev: map<P, P>,
 }
 
-impl<'a> State<'a> {
-    fn new(input: &'a Input) -> Self {
+impl Path {
+    fn new(g: &GridV<Cell>, bs: &mut FastBitSet2d, s: P, max_dist: us) -> Self {
+        let mut q = deque::new();
+        q.push((s,P::INF,0));
+        let mut dist = Vec::new();
+        bs.clear();
+        while let Some((v,p,d)) = q.pop_front() {
+            if bs[v] { continue; }
+            dist.push((v, d));
+            bs.set(v, true);
+            if d >= max_dist.i64() { continue; }
+            for di in 0..4 {
+                if !g[v].can_move[di] { continue; }
+                q.push((v.next_d(DS[di]),v,d+1));
+            }
+        }
         Self {
-            input,
-            g: input.g.clone(),
+            dist,
+            prev: map::default(),
+        }
+    }
+
+    fn for_restore_path(g: &GridV<Cell>, s: P, max_dist: us) -> Self {
+        let mut q = deque::new();
+        q.push((s,P::INF,0));
+        let mut dist = Vec::new();
+        let mut prev = map::default();
+        while let Some((v,p,d)) = q.pop_front() {
+            if prev.contains_key(&v) { continue; }
+            dist.push((v, d));
+            prev.insert(v,p);
+            if d >= max_dist.i64() { continue; }
+            for di in 0..4 {
+                if !g[v].can_move[di] { continue; }
+                q.push((v.next_d(DS[di]),v,d+1));
+            }
+        }
+        Self {
+            dist,
+            prev,
+        }
+    }
+
+    fn restore(&self, t0:P) -> Vec<P> {
+        let mut t = t0;
+        let mut ps = vec![t];
+        while self.prev[&t] != P::INF { t = self.prev[&t]; ps.push(t); }
+        ps.reverse();
+        ps
+    }
+}
+
+struct Solver<'a> {
+    io: &'a Io,
+    g: GridV<Cell>,
+    p0: P,
+    p1: P,
+    tern: us,
+    bs: fast_bit_set::FastBitSet2d,
+}
+
+impl<'a> Solver<'a> {
+    fn new(io: &'a Io, p0: P, p1: P) -> Self {
+        Self {
+            io,
+            g: io.g.clone(),
+            p0,
+            p1,
+            tern: 0,
+            bs: fast_bit_set::FastBitSet2d::new(io.n, io.n),
+        }
+    }
+
+    fn solve(&mut self, rng: &mut impl RngCore) -> Result {
+        let io = self.io;
+        let mut ret = Result { p0: self.p0, p1: self.p1, next_actions: vec![], score: 0, };
+        while self.tern < io.max_tern {
+            let op = if io.n <= 20 {
+                self.next_action_beam()
+            } else {
+                self.next_action_greedy(rng)
+            };
+            if let Some(action) = op {
+                self.apply(&action);
+                ret.push(action);
+            } else {
+                break;
+            }
+        }
+        ret
+    }
+
+    fn next_action_beam(&mut self) -> Option<NextAction> {
+        #[derive(Debug, Clone)]
+        struct State {
+            actions: Vec<NextAction>,
+            tern: us,
+            score: i64,
+        }
+
+        impl State {
+            fn new() -> Self {
+                Self {
+                    actions:vec![],
+                    tern: 0,
+                    score: 0,
+                }
+            }
+
+            fn gen_key(&self, io:&Io) -> Vec<u64> {
+                self.actions.iter().map(|a|io.zobrist.hash_s(&[a.v0.tuple(),a.v1.tuple()])).sorted().cv()
+                // self.actions.iter().map(|a|(a.v0,a.v1)).sorted().cv()
+            }
+            fn gen_key_p(&self, io:&Io) -> Vec<(P,P)> {
+                self.actions.iter().map(|a|(a.v0,a.v1)).sorted().cv()
+            }
+
+            fn add(&mut self, io: &Io, a: &NextAction) {
+                self.actions.push(a.clone());
+                self.tern += a.required_tern;
+                self.score += a.score;
+                // self.h0 ^= io.zobrist.hash(&a.v0);
+                // self.h1 ^= io.zobrist.hash(&a.v1);
+            }
+
+            fn score(&self) -> i64 {
+                self.score * 100000 / self.tern.i64()
+            }
+        }
+
+        let w = 20;
+        let mut beam = bounded_sorted_list::BoundedSortedList::<i64,State>::new(40);
+        for a in self.find_candidate_actions() {
+            let mut s = State::new();
+            s.add(&self.io, &a);
+            beam.insert(s.score(), s);
+        }    
+
+        for _ in 0..3 {
+            let mut bucket = map::<Vec<u64>,State>::default();
+            // let mut bucket = map::<Vec<(P,P)>,State>::default();
+            let cur = beam.values();
+            for s in &cur {
+                for a in &s.actions { self.apply(a); }
+                for a in self.find_candidate_actions() {
+                    let mut ns = s.clone();
+                    ns.add(&self.io, &a);
+                    // self.apply(&a);
+                    // bucket.entry(self.g.g.map(|c|c.a))
+                    let k = ns.gen_key(&self.io);
+                    // let k = ns.gen_key_p(&self.io);
+                    // let k = ns.h0^ns.h1;
+                    // let k = (ns.h0,ns.h1);
+                    // debug!(ns.h0);
+                    bucket.entry(k)
+                        .and_modify(|v| if v.score() > ns.score() { *v = ns.clone(); })
+                        .or_insert(ns);
+                    // self.revert(&a);
+                }
+                for a in s.actions.iter().rev() { self.revert(a); }
+            }
+
+            let mut nb = bounded_sorted_list::BoundedSortedList::<i64,State>::new(w);
+            if bucket.is_empty() {
+                cur.into_iter().for_each(|s|nb.insert(s.score, s));
+                beam = nb;
+                break;
+            }
+            bucket.into_values().for_each(|s|nb.insert(s.score(), s));
+            beam = nb;
+        }
+
+        let cand = beam.values();
+        if cand.is_empty() { return None; }
+        // debug!(cand);
+        let a = cand[0].actions[0].clone();
+        // debug!(cand.len(), a, cand[0].actions);
+        Some(a)
+    }
+
+    fn next_action_greedy(&mut self, rng: &mut impl rand_core::RngCore) -> Option<NextAction> {
+        let cand = self.find_candidate_actions();
+        let a = cand.first().cloned();
+        if a.is_none() { return None; }
+        if a.as_ref().unwrap().score < 0 { return a; }
+
+        let (p0, p1) = (self.p0, self.p1);
+        let v0 = (0..4).filter(|&i|self.g[p0].can_move[i]).choose(rng).map(|di|p0.next_d(DS[di])).unwrap();
+        let v1 = (0..4).filter(|&i|self.g[p1].can_move[i]).choose(rng).map(|di|p1.next_d(DS[di])).unwrap();
+        Some(NextAction{
+            p0,
+            p1,
+            v0, 
+            v1, 
             score: 0,
-            out: Out::default(),
-            x: P::new(0,0),
-            y: P::new(0,0),
-            // rng: Pcg64Mcg::seed_from_u64(7),
-            rng: Pcg64Mcg::from_entropy(),
-            hurry: false,
-            ncand: vec![],
-        }
+            required_tern: 1,
+        })
     }
 
-    fn initialize(&mut self) {
-        let n = self.input.n;
-        let rng = &mut self.rng;
-        self.out.ini_x = P::new(rng.gen_range(0..n), rng.gen_range(0..n));
-        self.out.ini_y = P::new(rng.gen_range(0..n), rng.gen_range(0..n));
-        self.x = self.out.ini_x;
-        self.y = self.out.ini_y;
-    }
-
-    fn execute(&mut self) {
-        let input = self.input;
-        for i in 0..4 * input.n * input.n {
-            if i & 0xFF == 0 {
-                let elapsed = input.st.elapsed().as_millis();
-                if elapsed >= LIMIT_MS { break; }
-                if elapsed >= 1500 { self.hurry = true; }
-            }
-            self.execute_tern(i);
-        }
-    }
-
-    fn execute_tern(&mut self, tern: us) {
-        let input = self.input;
-        let mut act = Action::default();
-        let (x, y) = (self.x, self.y);
-        let e = self.eval_swap(x, y);
-        act.score = e;
-        // debug!(tern, e);
-        if e < 0 {
-            act.s = 1;
-            self.g.swap_a(x, y);
-        }
-
-        let mut c = if input.n <= 30 && !self.hurry {
-            self.find_best3(x, y)
-        } else {
-            self.find_best2(x, y)
-        };
-
-        if c.0 >= 0 {
-            c.1 = self.g[x].choose(&mut self.rng);
-            c.2 = self.g[y].choose(&mut self.rng);
-            self.ncand.clear();
-        }
-
-        act.d = c.1;
-        act.e = c.2;
-        self.x = x.next_d(act.d);
-        self.y = y.next_d(act.e);
-        self.out.actions.push(act);
-    }
-
-    fn find_best2(&self, x: P, y: P) -> (i64, Option<Dir>, Option<Dir>) {
-        let mut best = (i64::INF, None, None);
-        for &xd in &self.g[x].dirs2() { for &yd in &self.g[y].dirs2() {
-            let (nx, ny) = (x.next_d(xd), y.next_d(yd));
-            let s = self.eval_swap(nx,ny).min(0);
-            for &xd2 in &self.g[nx].dirs2() { for &yd2 in &self.g[ny].dirs2() {
-                let (nx2, ny2) = (nx.next_d(xd2), ny.next_d(yd2));
-                let s = s + self.eval_swap(nx2,ny2).min(0);
-                if chmin!(best.0, s) {
-                    best.1 = xd;
-                    best.2 = yd;
-                }
-            }}
+    fn find_candidate_actions(&mut self) -> Vec<NextAction> {
+        let (p0, p1) = (self.p0, self.p1);
+        let ps0 = Path::new(&self.g, &mut self.bs, p0, self.io.max_dist);
+        let ps1 = Path::new(&self.g, &mut self.bs, p1, self.io.max_dist);
+        let mut ret = BoundedSortedList::new(20);
+        for i in 0..ps0.dist.len() { for j in 0..ps1.dist.len() {
+            let (v0, d0) = ps0.dist[i];
+            let (v1, d1) = ps1.dist[j];
+            let required_tern = d0.max(d1).us();
+            if self.tern + required_tern.us() > self.io.max_tern || required_tern == 0 { continue; }
+            let score = self.eval_a_after_swap(v0, v1);
+            ret.insert(score*1000/required_tern.i64(), NextAction{p0,p1,v0,v1,score,required_tern});
         }}
-        best
+        ret.values()
     }
 
-    fn find_best3(&mut self, x: P, y: P) -> (i64, Option<Dir>, Option<Dir>) {
-        let mut cand = vec![];
-        if self.ncand.is_empty() {
-            for &xd in &self.g[x].dirs2() { for &yd in &self.g[y].dirs2() {
-                let (nx, ny) = (x.next_d(xd), y.next_d(yd));
-                let s = self.eval_swap(nx,ny).min(0);
-                for &xd2 in &self.g[nx].dirs2() { for &yd2 in &self.g[ny].dirs2() {
-                    let (nx2, ny2) = (nx.next_d(xd2), ny.next_d(yd2));
-                    let s2 = s + self.eval_swap(nx2,ny2).min(0);
-                    cand.push((s,s2,xd,yd,nx2,ny2,xd2,yd2));
-                }}
-            }}
-        } else {
-            for &(s2,s3,xd,yd,nx2,ny2,xd2,yd2,nx3,ny3,xd3,yd3) in &self.ncand {
-                cand.push((s2,s3,xd2,yd2,nx3,ny3,xd3,yd3));
-            }
+    fn eval_a_after_swap(&mut self, p0:P, p1:P) -> i64 {
+        // let score0 = self.eval_a(p0, p1);
+        let s0 = self.eval_p_with_x(p0, self.g[p0].a) + self.eval_p_with_x(p1, self.g[p1].a);
+        self.swap(p0, p1);
+        let s1 = self.eval_p_with_x(p0, self.g[p0].a) + self.eval_p_with_x(p1, self.g[p1].a);
+        self.swap(p0, p1);
+        s1 - s0
+    }
+
+    fn swap(&mut self, p0: P, p1: P) {
+        let x1 = self.g[p1].a;
+        self.g[p1].a = self.g[p0].a;
+        self.g[p0].a = x1;
+    }
+
+    fn apply(&mut self, a: &NextAction) {
+        self.tern += a.required_tern.us();
+        self.p0 = a.v0;
+        self.p1 = a.v1;
+        self.swap(a.v0, a.v1);
+    }
+
+    fn revert(&mut self, a: &NextAction) {
+        self.swap(a.v0, a.v1);
+        self.tern -= a.required_tern.us();
+        self.p0 = a.p0;
+        self.p1 = a.p1;
+    }
+
+    fn rev(d:us) -> us {
+        match d {
+            0 => 1,
+            1 => 0,
+            2 => 3,
+            3 => 2,
+            4 => 4,
+            _ => unreachable!(),
         }
-
-        self.ncand.clear();
-        let mut best = (i64::INF, None, None);
-        for (s,s2,xd,yd,nx2,ny2,xd2,yd2) in cand {
-            for &xd3 in &self.g[nx2].dirs2() { for &yd3 in &self.g[ny2].dirs2() {
-                let (nx3, ny3) = (nx2.next_d(xd3), ny2.next_d(yd3));
-                let t3 = self.eval_swap(nx3,ny3).min(0);
-                let s3 = s2 + t3;
-                self.ncand.push((s2,s2-s+t3,xd,yd,nx2,ny2,xd2,yd2,nx3,ny3,xd3,yd3));
-                if chmin!(best.0, s3) {
-                    best.1 = xd;
-                    best.2 = yd;
-                }
-            }}
-        }
-
-        if best.0 != i64::INF {
-            self.ncand.retain(|t|(t.2,t.3)==(best.1,best.2));
-        } else {
-            self.ncand.clear();
-        }
-        self.ncand.clear();
-        best
     }
 
-    fn eval_swap(&self, x: P, y: P) -> i64 {
-        let cur = self.eval_p(x, self.g[x].a) + self.eval_p(y, self.g[y].a);
-        let nxt = self.eval_p(x, self.g[y].a) + self.eval_p(y, self.g[x].a);
-        nxt - cur
+    fn eval_swap(&mut self, p0: P, p1: P) -> i64 {
+        let score0 = self.eval_a(p0, p1);
+        self.swap(p0, p1);
+        let score1 = self.eval_a(p0, p1);
+        self.swap(p0, p1);
+        score1 - score0
     }
 
-    fn eval_p(&self, p: P, a: i64) -> i64 {
-        let mut s = 0;
-        for &d in &self.g[p].dirs {
-            s += self.g[p.next(d)].eval_a(a);
-        }
-        s
+    fn eval_a(&self, p0:P, p1:P) -> i64 {
+        self.eval_p(p0) + self.eval_p(p1)
     }
-
-}
-
-#[derive(Clone, Debug, Default)]
-struct Cell {
-    dirs: Vec<Dir>,
-    a: i64,
-}
-
-impl Cell {
-    fn eval(&self, c: &Cell) -> i64 { (self.a - c.a) * (self.a - c.a) }
-    fn eval_a(&self, a: i64) -> i64 { (self.a - a) * (self.a - a) }
-    fn choose(&self, rng: &mut impl RngCore) -> Option<Dir> {
-        let x = rng.gen_range(0..=self.dirs.len());
-        self.dirs.get(x).cloned()
+    fn eval_p(&self, p:P) -> i64 {
+        (0..4).filter(|&i|self.g[p].can_move[i])
+            .map(|i|i64::abs(self.g[p].a-self.g[p.next_d(DS[i])].a)<<1)
+            .sum::<i64>()
     }
-
-    fn dirs2(&self) -> Vec<Option<Dir>> {
-        self.dirs.iter().map(|&d|Some(d)).chain([None]).cv()
+    fn eval_p_with_x(&self, p:P, x: i64) -> i64 {
+        (0..4).filter(|&i|self.g[p].can_move[i])
+            .map(|i|i64::abs(x-self.g[p.next_d(DS[i])].a)<<1)
+            .sum::<i64>()
     }
 }
 
 // CONTEST(abcXXX-a)
 // #[fastout]
 fn solve() {
-    let input = Input::new();
-    let mut best = Out::default();
-    best.score = i64::INF;
-    // let mut g = G::new(input.n, input.n);
-    let mut cnt = 0;
-    loop {
-        let elapsed = input.st.elapsed().as_millis();
-        if elapsed >= LIMIT_MS { break; }
-        cnt += 1;
-        let mut st = State::new(&input);
-        st.initialize();
-        st.execute();
-        let score = st.g.eval_all();
-        if best.score > score {
-            best = st.out.clone();
-            best.score = score;
-            // g = st.g;
-        }
+    let mut rng = rand_pcg::Pcg64Mcg::from_entropy();
+    let io = Io::new(&mut rng);
+    let mut solver = Solver::new(&io, P::new(0,0), P::new(io.n-1,io.n-1));
+    let res = solver.solve(&mut rng);
+    eprintln!("# N={}", io.n);
+    res.out(&io);
+}
+
+pub mod zobrist_hash {
+#![allow(non_camel_case_types)]
+use std::hash::BuildHasherDefault;
+use itertools::iproduct;
+use rustc_hash::FxHasher;
+
+type map<K,V>  = std::collections::HashMap<K,V, BuildHasherDefault<FxHasher>>;
+
+#[derive(Debug, Clone)]
+pub struct ZobristHash<T: std::hash::Hash + std::cmp::Eq + Clone> {
+    hash: map<T, u64>,
+}
+
+impl<T: std::hash::Hash + std::cmp::Eq + Clone> ZobristHash<T> {
+    pub fn new(items: &[T], rng: &mut impl rand_core::RngCore) -> ZobristHash<T> {
+        let mut hash = map::default();
+        for item in items { hash.insert(item.clone(), rng.next_u64()); }
+        ZobristHash { hash }
     }
 
-    best.print();
-    eprintln!("# T={},N={},CNT={},ACTIONS={}", input.t, input.n, cnt, best.actions.len());
-    // for i in 0..input.n {
-    //     eprintln!("{}", fmt!(g[i].iter().map(|c|c.a).cv()));
-    // }
+    pub fn hash(&self, x:&T) -> u64 { self.hash[&x] }
+    pub fn hash_s(&self, v:&[T]) -> u64 { v.iter().map(|x|self.hash(x)).fold(0,|a,x|a^x) }
+}
+
+#[derive(Debug, Clone)]
+pub struct ZobristHash2d {
+    hash: Vec<Vec<u64>>,
+}
+
+impl ZobristHash2d {
+    pub fn new(h:usize, w:usize, rng: &mut impl rand_core::RngCore) -> Self {
+        let mut hash = vec![vec![0; w]; h];
+        for (i, j) in iproduct!(0..h, 0..w) { hash[i][j] = rng.next_u64(); }
+        Self { hash }
+    }
+
+    pub fn hash(&self, v:(usize,usize)) -> u64 { self.hash[v.0][v.1] }
+    pub fn hash_s(&self, v:&[(usize,usize)]) -> u64 { v.iter().map(|&x|self.hash(x)).fold(0,|a,x|a^x) }
+}
+
 }
 
 // #CAP(fumin::modint)
@@ -343,7 +515,7 @@ use crate::{common::*, chmin};
 use super::pt::{Pt, Dir};
 
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridV<T> {
     pub g: Vec<T>,
     pub h: us,
@@ -356,11 +528,15 @@ where
     pub fn new(h: us, w: us) -> Self {
         Self { g: vec![T::default(); h * w], h, w, }
     }
+}
+
+impl<T:Clone> GridV<T> {
     pub fn with_default(h: us, w: us, v: T) -> Self {
         Self { g: vec![v; h * w], h, w, }
     }
     pub fn is_in_p<N: IntoT<us>>(&self, p: Pt<N>) -> bool { self.is_in_t(p.tuple()) }
     pub fn is_in_t<N: IntoT<us>>(&self, t: (N, N)) -> bool { t.0.into_t() < self.h && t.1.into_t() < self.w }
+
 }
 
 impl<T, N: IntoT<us>> Index<N> for GridV<T> {
@@ -474,6 +650,7 @@ impl<T: CellTrait> GridV<T> {
 pub mod pt {
 #![allow(dead_code)]
 use std::{*, ops::*, iter::Sum};
+use itertools::iproduct;
 use num_traits::Signed;
 use rand::Rng;
 
@@ -481,11 +658,17 @@ use crate::{common::*, enrich_enum, count};
 
 
 // Pt
-#[derive(Debug,Copy,Clone,PartialEq,Eq,PartialOrd,Ord,Hash,Default)]
+#[derive(Copy,Clone,PartialEq,Eq,PartialOrd,Ord,Hash,Default)]
 pub struct Pt<N> { pub x: N, pub y: N }
 
+impl<N:fmt::Display> fmt::Debug for Pt<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
+    }
+}
+
 impl<N> Pt<N> {
-    pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Pt<N> { Pt{x:x.into_t(), y:y.into_t()} }
+    pub fn new(x: impl IntoT<N>, y: impl IntoT<N>) -> Self { Pt{x:x.into_t(), y:y.into_t()} }
     pub fn of(x: N, y: N) -> Pt<N> { Pt{x:x, y:y} }
     pub fn tuple(self) -> (N, N) { (self.x, self.y) }
 }
@@ -494,6 +677,7 @@ impl<N: SimplePrimInt> Pt<N> {
     pub fn on(self, h: Range<N>, w: Range<N>) -> bool { h.contains(&self.x) && w.contains(&self.y) }
     pub fn manhattan_distance(self, p: Pt<N>) -> N { abs_diff(self.x, p.x) + abs_diff(self.y, p.y) }
 }
+
 impl<N: SimplePrimInt+FromT<i64>+ToF64> Pt<N> {
     pub fn norm(self) -> f64 { self.norm2().f64().sqrt() }
 }
@@ -504,7 +688,10 @@ impl Pt<us> {
     pub fn wrapping_sub(self, a: Self) -> Self { Self::of(self.x.wrapping_sub(a.x), self.y.wrapping_sub(a.y)) }
     pub fn wrapping_mul(self, a: Self) -> Self { Self::of(self.x.wrapping_mul(a.x), self.y.wrapping_mul(a.y)) }
     pub fn next(self, d: Dir) -> Self { self.wrapping_add(d.p()) }
+    pub fn iter_next_4d(self) -> impl Iterator<Item=Self> { Dir::VAL4.iter().map(move|&d|self.next(d)) }
+    pub fn iter_next_8d(self) -> impl Iterator<Item=Self> { Dir::VALS.iter().map(move|&d|self.next(d)) }
     pub fn prev(self, d: Dir) -> Self { self.wrapping_sub(d.p()) }
+    pub fn iter(rx: Range<us>, ry: Range<us>) -> impl Iterator<Item=Self> { iproduct!(rx, ry).map(|t|Self::from(t)) }
 }
 
 impl<T: Inf> Inf for Pt<T> {
@@ -538,11 +725,15 @@ impl<N: SimplePrimInt+fmt::Display> fmt::Display  for Pt<N> { fn fmt(&self, f: &
 impl<N: SimplePrimInt+fmt::Display> Fmt           for Pt<N> { fn fmt(&self) -> String { format!("{} {}", self.x, self.y) } }
 impl<N: AddAssign<N>+Copy> AddAssign<Pt<N>> for Pt<N> { fn add_assign(&mut self, rhs: Pt<N>) { self.x += rhs.x; self.y += rhs.y; } }
 impl<N: SubAssign<N>+Copy> SubAssign<Pt<N>> for Pt<N> { fn sub_assign(&mut self, rhs: Pt<N>) { self.x -= rhs.x; self.y -= rhs.y; } }
+impl<N: AddAssign<N>+Copy> AddAssign<N>     for Pt<N> { fn add_assign(&mut self, rhs: N) { self.x += rhs; self.y += rhs; } }
+impl<N: SubAssign<N>+Copy> SubAssign<N>     for Pt<N> { fn sub_assign(&mut self, rhs: N) { self.x -= rhs; self.y -= rhs; } }
 impl<N: MulAssign<N>+Copy> MulAssign<N>     for Pt<N> { fn mul_assign(&mut self, rhs: N) { self.x *= rhs; self.y *= rhs; } }
 impl<N: DivAssign<N>+Copy> DivAssign<N>     for Pt<N> { fn div_assign(&mut self, rhs: N) { self.x /= rhs; self.y /= rhs; } }
 impl<N: RemAssign<N>+Copy> RemAssign<N>     for Pt<N> { fn rem_assign(&mut self, rhs: N) { self.x %= rhs; self.y %= rhs; } }
 impl<N: AddAssign<N>+Copy> Add<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn add(mut self, rhs: Pt<N>) -> Self::Output { self += rhs; self } }
 impl<N: SubAssign<N>+Copy> Sub<Pt<N>>       for Pt<N> { type Output = Pt<N>; fn sub(mut self, rhs: Pt<N>) -> Self::Output { self -= rhs; self } }
+impl<N: AddAssign<N>+Copy> Add<N>           for Pt<N> { type Output = Pt<N>; fn add(mut self, rhs: N) -> Self::Output { self += rhs; self } }
+impl<N: SubAssign<N>+Copy> Sub<N>           for Pt<N> { type Output = Pt<N>; fn sub(mut self, rhs: N) -> Self::Output { self -= rhs; self } }
 impl<N: MulAssign<N>+Copy> Mul<N>           for Pt<N> { type Output = Pt<N>; fn mul(mut self, rhs: N) -> Self::Output { self *= rhs; self } }
 impl<N: DivAssign<N>+Copy> Div<N>           for Pt<N> { type Output = Pt<N>; fn div(mut self, rhs: N) -> Self::Output { self /= rhs; self } }
 impl<N: RemAssign<N>+Copy> Rem<N>           for Pt<N> { type Output = Pt<N>; fn rem(mut self, rhs: N) -> Self::Output { self %= rhs; self } }
@@ -645,13 +836,136 @@ macro_rules! enrich_enum {
     };
 }
 }
+pub mod bounded_sorted_list {
+#![allow(dead_code)]
+
+use std::collections::BinaryHeap;
+
+#[derive(Clone, Debug)]
+struct Entry<K, V> {
+    k: K,
+    v: V,
+}
+
+impl<K: PartialOrd, V> Ord for Entry<K, V> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl<K: PartialOrd, V> PartialOrd for Entry<K, V> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.k.partial_cmp(&other.k)
+    }
+}
+
+impl<K: PartialEq, V> PartialEq for Entry<K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.k.eq(&other.k)
+    }
+}
+
+impl<K: PartialEq, V> Eq for Entry<K, V> {}
+
+/// K が小さいトップn個を保持
+#[derive(Clone, Debug)]
+pub struct BoundedSortedList<K: PartialOrd + Copy, V: Clone> {
+    que: BinaryHeap<Entry<K, V>>,
+    size: usize,
+}
+
+impl<K: PartialOrd + Copy, V: Clone> BoundedSortedList<K, V> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            que: BinaryHeap::with_capacity(size),
+            size,
+        }
+    }
+    pub fn can_insert(&self, k: K) -> bool {
+        self.que.len() < self.size || self.que.peek().unwrap().k > k
+    }
+    pub fn insert(&mut self, k: K, v: V) {
+        if self.que.len() < self.size {
+            self.que.push(Entry { k, v });
+        } else if let Some(mut top) = self.que.peek_mut() {
+            if top.k > k {
+                top.k = k;
+                top.v = v;
+            }
+        }
+    }
+    pub fn list(self) -> Vec<(K, V)> {
+        let v = self.que.into_sorted_vec();
+        v.into_iter().map(|e| (e.k, e.v)).collect()
+    }
+    pub fn values(self) -> Vec<V> {
+        self.que.into_sorted_vec().into_iter().map(|e|e.v).collect()
+    }
+    pub fn len(&self) -> usize { self.que.len() }
+    pub fn is_empty(&self) -> bool { self.que.is_empty() }
+
+}
+}
+pub mod fast_bit_set {
+#![allow(dead_code)]
+
+use crate::common::us;
+use super::pt;
+
+type P = pt::Pt<us>;
+
+pub struct FastBitSet {
+    bs: Vec<u32>,
+    id: u32,
+}
+
+impl FastBitSet {
+    pub fn new(n: usize) -> Self { Self { bs: vec![0; n], id: 1, } }
+    pub fn clear(&mut self) { self.id += 1; }
+    pub fn set(&mut self, i: usize, f: bool) { self.bs[i] = if f { self.id } else { 0 }; }
+}
+
+impl std::ops::Index<usize> for FastBitSet {
+    type Output = bool;
+    fn index(&self, i: usize) -> &bool {
+        if self.bs[i] == self.id { &true } else { &false }
+    }
+}
+
+pub struct FastBitSet2d {
+    bs: Vec<u32>,
+    id: u32,
+    pub h: us,
+    pub w: us,
+}
+
+impl FastBitSet2d {
+    pub fn new(h: us, w:us) -> Self { Self { bs: vec![0; h*w], id: 1, h, w, } }
+    pub fn clear(&mut self) { self.id += 1; }
+    pub fn set(&mut self, v: P, f: bool) {
+        let idx = self.idx(v);
+        self.bs[idx] = if f { self.id } else { 0 };
+    }
+    fn idx(&self, v: P) -> us { v.x * self.w + v.y }
+}
+
+impl std::ops::Index<P> for FastBitSet2d {
+    type Output = bool;
+    fn index(&self, v: P) -> &bool {
+        if self.bs[self.idx(v)] == self.id { &true } else { &false }
+    }
+}
+
+}
 }
 
 pub mod common {
 #![allow(dead_code, unused_imports, unused_macros, non_snake_case, non_camel_case_types)]
 use std::{*, ops::*, collections::*, iter::{Sum, FromIterator}};
+use hash::BuildHasherDefault;
 use itertools::Itertools;
 use ::num::{One, Zero};
+use rustc_hash::FxHasher;
 
 pub type us        = usize;
 pub type is        = isize;
@@ -660,9 +974,9 @@ pub type is1       = proconio::marker::Isize1;
 pub type chars     = proconio::marker::Chars;
 pub type bytes     = proconio::marker::Bytes;
 pub type Str       = String;
-pub type map<K,V>  = HashMap<K,V>;
+pub type map<K,V>  = HashMap<K,V, BuildHasherDefault<FxHasher>>;
 pub type bmap<K,V> = BTreeMap<K,V>;
-pub type set<V>    = HashSet<V>;
+pub type set<V>    = HashSet<V, BuildHasherDefault<FxHasher>>;
 pub type bset<V>   = BTreeSet<V>;
 pub type bheap<V>  = BinaryHeap<V>;
 pub type deque<V>  = VecDeque<V>;
@@ -783,7 +1097,7 @@ pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 pub fn to_int<T:Zero+One>(a: bool) -> T { if a { T::one() } else { T::zero() } }
-pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
+pub fn min_max<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
 pub fn bin_search<T: ExPrimInt+Shr<Output=T>>(mut ok: T, mut ng: T, f: impl Fn(T)->bool) -> T {
     while abs_diff(ok, ng) > T::one() {
         let m = (ok + ng) >> T::one();
@@ -802,10 +1116,10 @@ pub trait IterTrait : Iterator {
         CountIter::new(self)
     }
     fn grouping_to_bmap<'a, K:Ord+Clone, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
-        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
+        self.fold(bmap::<_,_>::new(), |mut m, x| { m.entry(get_key(&x)).or_default().push(get_val(&x)); m })
     }
     fn grouping_to_map<K:Eq+hash::Hash+Clone, V>(&mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> map<K, Vec<V>> {
-        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
+        self.fold(map::<_,_>::default(), |mut m, x| { m.entry(get_key(&x)).or_default().push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 
@@ -827,10 +1141,10 @@ impl<I: Iterator, C> CountIter<I, C>
         C: Eq + AddAssign<C> + One + Default + Copy,
         {
     pub fn new(iter: &mut I) -> Self {
-        let mut cnt = map::new();
+        let mut cnt = map::default();
         let mut keys = Vec::new();
         while let Some(e) = iter.next() {
-            *cnt.or_def_mut(&e) += C::one();
+            *cnt.entry(e.clone()).or_default() += C::one();
             if cnt[&e] == C::one() { keys.push(e); }
         }
         let nexts = deque::from_iter(
@@ -870,9 +1184,6 @@ impl<I, T, U> PairOrdIterTrait<T, U>  for I where I: Iterator<Item=(T,U)>, T: Or
 
 
 // Vec
-pub trait VecFill<T> { fn fill(&mut self, t: T); }
-impl<T:Clone> VecFill<T> for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
-
 pub trait VecCount<T> { fn count(&self, f: impl FnMut(&T)->bool) -> us; }
 impl<T> VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
 
@@ -906,48 +1217,6 @@ impl<T> DequePush<T> for VecDeque<T> { fn push(&mut self, t: T) { self.push_back
 
 pub trait DequePop<T> { fn pop(&mut self) -> Option<T>; }
 impl<T> DequePop<T> for VecDeque<T> { fn pop(&mut self) -> Option<T> { self.pop_back() } }
-
-// Map
-pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
-pub trait MapOrDefMut<K,V> { fn or_def_mut(&mut self, k: &K) -> &mut V; }
-pub trait MapOr<K,V> { fn or<'a>(&'a self, k: &K, v: &'a  V) -> &'a V; }
-
-impl<K:Eq+hash::Hash, V:Default+Clone> MapOrDef<K, V> for map<K, V> {
-    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
-}
-impl<K:Eq+hash::Hash+Clone, V:Default> MapOrDefMut<K, V> for map<K, V> {
-    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
-}
-impl<K:Eq+hash::Hash, V> MapOr<K, V> for map<K, V> {
-    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
-}
-
-impl<K:Ord, V:Default+Clone> MapOrDef<K, V> for bmap<K, V> {
-    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
-}
-impl<K:Ord+Clone, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
-    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
-}
-impl<K:Ord, V> MapOr<K, V> for bmap<K, V> {
-    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
-}
-pub trait BMapTrait<K,V> {
-    fn lower_bound(&self, k: &K) -> Option<(&K, &V)>;
-    fn upper_bound(&self, k: &K) -> Option<(&K, &V)>;
-}
-impl<K:Ord, V> BMapTrait<K, V> for bmap<K, V> {
-    fn lower_bound(&self, k: &K) -> Option<(&K, &V)> { self.range(k..).next() }
-    fn upper_bound(&self, k: &K) -> Option<(&K, &V)> { self.range((Bound::Excluded(k), Bound::Unbounded)).next() }
-}
-
-pub trait BSetTrait<T> {
-    fn lower_bound(&self, t: &T) -> Option<&T>;
-    fn upper_bound(&self, t: &T) -> Option<&T>;
-}
-impl<T:Ord> BSetTrait<T> for bset<T> {
-    fn lower_bound(&self, t: &T) -> Option<&T> { self.range(t..).next() }
-    fn upper_bound(&self, t: &T) -> Option<&T> { self.range((Bound::Excluded(t), Bound::Unbounded)).next() }
-}
 
 pub trait Identify {
     type Ident;
@@ -1016,6 +1285,21 @@ impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e|
     (@debug $a:expr)               => {{ format!("{:?}", ($a)) }};
 }
 
+#[macro_export] macro_rules! vprintln {
+    ($a:expr) => { for x in &($a) { println!("{}", x); } };
+}
+#[macro_export] macro_rules! vprintsp {
+    ($a:expr) => {
+        {
+            use itertools::Itertools;
+            println!("{}", ($a).iter().join(" "));
+        }
+    }
+}
+#[macro_export] macro_rules! print_grid {
+    ($a:expr) => { for v in &($a) { println!("{}", v.iter().collect::<Str>()); } };
+}
+
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
     ($($a:expr),*)    => { eprintln!("{}", fmt!(@debug  $($a),*)); };
 }
@@ -1035,5 +1319,6 @@ pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
 pub fn no(b: bool) -> &'static str { yes(!b) }
 pub fn No(b: bool) -> &'static str { Yes(!b) }
 pub fn NO(b: bool) -> &'static str { YES(!b) }
+
 
 }

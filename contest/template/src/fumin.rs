@@ -1,3 +1,4 @@
+pub mod bounded_sorted_list;
 pub mod bellmanford;
 pub mod compress;
 pub mod cumsum;
@@ -40,3 +41,4 @@ pub mod weighted_graph;
 pub mod weighted_unionfind;
 pub mod zalgorithm;
 pub mod zero_one_bfs;
+pub mod zobrist_hash;

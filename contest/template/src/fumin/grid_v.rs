@@ -6,18 +6,14 @@ use super::pt::{Pt, Dir};
 
 // CAP(fumin::pt)
 
+#[derive(Debug, Clone)]
 pub struct GridV<T> {
     g: Vec<T>,
     h: us,
     w: us,
 }
 
-impl <T> GridV<T>
-where
-    T: Clone + Default {
-    pub fn new(h: us, w: us) -> Self {
-        Self { g: vec![T::default(); h * w], h, w, }
-    }
+impl<T: Clone> GridV<T> {
     pub fn with_default(h: us, w: us, v: T) -> Self {
         Self { g: vec![v; h * w], h, w, }
     }
@@ -25,16 +21,35 @@ where
     pub fn is_in_t<N: IntoT<us>>(&self, t: (N, N)) -> bool { t.0.into_t() < self.h && t.1.into_t() < self.w }
 }
 
+impl<T: Clone + Default> GridV<T> {
+    pub fn new(h: us, w: us) -> Self {
+        Self { g: vec![T::default(); h * w], h, w, }
+    }
+}
+
+impl ToString for GridV<char> {
+    fn to_string(&self) -> String {
+        let mut ret = "".to_owned();
+        for i in 0..self.h {
+            ret.push_str(format!("{}: ", i%10).as_str()); // line number
+            ret.push_str(self[i].str().as_str());
+            ret.push('\n');
+        }
+        ret
+
+    }
+}
+
 impl<T, N: IntoT<us>> Index<N> for GridV<T> {
     type Output = [T];
     fn index(&self, i: N) -> &Self::Output {
-        let idx = i.into_t() * self.h;
+        let idx = i.into_t() * self.w;
         &self.g[idx..idx+self.w]
     }
 }
 impl<T, N: IntoT<us>> IndexMut<N> for GridV<T> {
     fn index_mut(&mut self, i: N) -> &mut Self::Output {
-        let idx = i.into_t() * self.h;
+        let idx = i.into_t() * self.w;
         &mut self.g[idx..idx+self.w]
     }
 }

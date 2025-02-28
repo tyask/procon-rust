@@ -7,14 +7,14 @@ use crate::common::*;
 //             ^       v
 //             9 < 4 < 8
 #[derive(Debug)]
-struct PigTail<T> {
-    v: Vec<T>,
-    loop_start: us,
+pub struct PigTail<T> {
+    pub v: Vec<T>,
+    pub loop_start: us,
 }
 impl<T: Clone> PigTail<T> {
     // v: 有効グラフの要素を順番に並べたリスト
     // loop_start: ループが開始するindex
-    pub fn new(v: &Vec<T>, loop_start: us) -> Self {
+    fn new(v: &Vec<T>, loop_start: us) -> Self {
         Self { v: v.to_vec(), loop_start }
     }
     pub fn len(&self) -> us { self.v.len() }
