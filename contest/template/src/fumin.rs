@@ -8,6 +8,8 @@ pub mod enrich_enum;
 pub mod eratosthenes;
 pub mod euler_tour;
 pub mod fast_bit_set;
+pub mod fast_iset;
+pub mod fast_vec;
 pub mod fenwick_tree;
 pub mod fenwick_tree2d;
 pub mod graph;

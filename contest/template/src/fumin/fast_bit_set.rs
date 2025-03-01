@@ -6,6 +6,7 @@ use super::pt;
 // CAP(fumin::pt)
 type P = pt::Pt<us>;
 
+// フラグのチェックとclearがO(1)でできる
 pub struct FastBitSet {
     bs: Vec<u32>,
     id: u32,
