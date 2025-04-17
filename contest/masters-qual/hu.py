@@ -1,4 +1,4 @@
-#!/bin/env python
+#! /usr/bin/env python
 import argparse
 import os
 import re
@@ -34,7 +34,7 @@ class Result:
     def _score(self):
         # ビジュアライザの出力からスコアを取得する. vis.exeの出力仕様に応じて変更する必要あり.
         for line in self.visout.split('\n'):
-            m = re.search('Score = (\d+)', line)
+            m = re.search('Score = (\\d+)', line)
             if m:
                 return int(m[1])
         return 0
@@ -45,7 +45,8 @@ class Result:
         print('{:04d} SCORE[{:11,d}] ELAPSED[{:.2f}s] CMTS[{}]'.format(self.case, self.score, self.elapsed, cmts))
 
     def clip(self):
-        sb.run('clip < {}'.format(self.outf), shell=True, check=True, stderr=sb.DEVNULL)
+        #sb.run('clip < {}'.format(self.outf), shell=True, check=True, stderr=sb.DEVNULL)
+        sb.run('pbcopy < {}'.format(self.outf), shell=True, check=True, stderr=sb.DEVNULL)
 
     def _lookup_comments(self):
         cmts = ''
@@ -61,10 +62,11 @@ class Hu:
         self.bin = os.path.basename(os.path.dirname(__file__)) + "-" + args.a
         self.target_dir = 'target'
         self.tools = 'tools'
-        self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin + '.exe'))
-        self.vis = os.path.abspath(os.path.join(self.tools, 'vis.exe'))
-        self.tester = os.path.abspath(os.path.join(self.tools, 'tester.exe'))
-        self.score = os.path.abspath(os.path.join(self.tools, 'score.exe'))
+        #self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin + '.exe'))
+        self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin))
+        self.vis = os.path.abspath(os.path.join(self.tools, 'vis'))
+        self.tester = os.path.abspath(os.path.join(self.tools, 'tester'))
+        self.score = os.path.abspath(os.path.join(self.tools, 'score'))
         self.cases = self._parse_cases(args)
         self.args = args
         self.max_workers = 5
