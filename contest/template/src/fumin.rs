@@ -1,3 +1,4 @@
+pub mod bit_set;
 pub mod bounded_sorted_list;
 pub mod bellmanford;
 pub mod compress;

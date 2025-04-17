@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use std::{*, ops::*, iter::Sum};
-use itertools::iproduct;
+use itertools::{iproduct, Itertools};
 use num_traits::Signed;
 use rand::Rng;
 
@@ -43,6 +43,40 @@ impl Pt<us> {
     pub fn iter_next_8d(self) -> impl Iterator<Item=Self> { Dir::VALS.iter().map(move|&d|self.next(d)) }
     pub fn prev(self, d: Dir) -> Self { self.wrapping_sub(d.p()) }
     pub fn iter(rx: Range<us>, ry: Range<us>) -> impl Iterator<Item=Self> { iproduct!(rx, ry).map(|t|Self::from(t)) }
+    fn to_dir(a:Self, b:Self) -> Option<Dir> {
+        // aから見てbがどちらの方向にあるか
+        if a == b { return None; }
+        if a.x == b.x {
+            if a.y < b.y { Some(Dir::R) } else { Some(Dir::L) }
+        } else if a.y == b.y {
+            if a.x < b.x { Some(Dir::D) } else { Some(Dir::U) }
+        } else {
+            unreachable!("a and b are distant from each other. a={}, b={}", a, b);
+        }
+    }
+    pub fn to_dirs(rt:&Vec<Self>) -> Vec<Dir> {
+        rt.iter().tuple_windows()
+            .map(|(&a,&b)|Dir::dir(a,b))
+            .cv()
+    }
+
+    pub fn move_xy(a:Self, b:Self) -> Vec<Self> {
+        // aからbに縦->横の順に進む
+        Self::move_impl(a, b, Self::new(b.x, a.y))
+    }
+    pub fn move_yx(a:Self, b:Self) -> Vec<Self> {
+        // aからbに横->縦の順に進む
+        Self::move_impl(a, b, Self::new(a.x, b.y))
+    }
+    fn move_impl(a:Self, b:Self, corner:Self) -> Vec<Self> {
+        let mut ret = vec![a];
+        let mut v = a;
+        for (x, y) in [(a, corner), (corner, b)] {
+            let d = Self::to_dir(x, y).unwrap();
+            for _ in 0..x.manhattan_distance(y) { v = v.next(d); ret.push(v); }
+        }
+        ret
+    }
 }
 
 impl<T: Inf> Inf for Pt<T> {
