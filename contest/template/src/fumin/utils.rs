@@ -177,10 +177,17 @@ pub fn safe_mod<N: ExPrimInt> (n: N, m: N) -> N { (n % m + m) % m }
 pub fn sumae<N: SimplePrimInt>(n: N, a: N, e: N) -> N { n * (a + e) / N::two() }
 pub fn sumaed<N: SimplePrimInt>(a: N, e: N, d: N) -> N { ((e - a) / d) * (a + e) / N::two() }
 pub fn sumad<N: SimplePrimInt>(n: N, a: N, d: N) -> N { n * (N::two() * a + (n - N::one()) * d) / N::two() }
-pub fn ndigits<N: SimplePrimInt+FromT<us>>(mut n: N) -> us {
-    let mut d = 0;
-    while n > N::zero() { d+=1; n/=N::from_t(10); } d
+pub fn ndigits<N:IntoT<us>>(n: N) -> us {
+    use superslice::*;
+    const POW10: [us; 20] = {
+        let mut a = [1; 20];
+        let mut i = 0;
+        while i < 19 { a[i+1] = a[i] * 10; i += 1; }
+        a
+    };
+    POW10.upper_bound(&n.into_t())
 }
+
 pub fn factorial<N: Copy+Eq+Mul<N>+Sub<Output=N>+One>(n: N) -> N {
     if n.is_one() { N::one() } else { n * factorial(n - N::one()) }
 }

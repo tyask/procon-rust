@@ -18,13 +18,9 @@ def lookup_template(mod):
 def cargo_capture(mod, src):
     subprocess.run('cargo capture --module {} --target {}'.format(mod, src), shell=True)
 
-def main():
-    src = sys.argv[1]
+def refresh_src(src):
     mod = lookup_module_project(src)
     template = lookup_template(mod)
-    print('src={}'.format(src))
-    print('template={}'.format(template))
-    print('module project={}'.format(mod))
 
     if not os.path.exists(template):
         print("Missing template file: {}".format(template))
@@ -36,6 +32,11 @@ def main():
 
     shutil.copy(template, src)
     cargo_capture(mod, src)
+    print('src={}, template={}, module project={}'.format(src, template, mod))
+
+def main():
+    for src in sys.argv[1:]:
+        refresh_src(src)
 
 if __name__ == '__main__':
     main()

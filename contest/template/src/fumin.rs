@@ -5,6 +5,7 @@ pub mod compress;
 pub mod cumsum;
 pub mod cumsum2d;
 pub mod dijkstra;
+pub mod doubly_chained_tree;
 pub mod enrich_enum;
 pub mod eratosthenes;
 pub mod euler_tour;

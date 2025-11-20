@@ -52,6 +52,7 @@ use crate::common::*;
         }
     }
 }
+impl_bitset!{u32,  BitSet32}
 impl_bitset!{u64,  BitSet64}
 impl_bitset!{u128, BitSet128}
 

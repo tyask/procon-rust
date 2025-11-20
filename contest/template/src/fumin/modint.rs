@@ -64,6 +64,10 @@ impl<const M: i64> One for Modint<M> {
     fn one()  -> Self { Self::new(1) }
 }
 
+// for debug
+pub trait NewTrait { fn new(n:us) -> Self; }
+impl NewTrait for f64 { fn new(n:us) -> Self { n as f64 } }
+
 // CAP(IGNORE_BELOW)
 #[cfg(test)]
 mod tests {

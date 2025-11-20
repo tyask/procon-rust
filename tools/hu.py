@@ -58,7 +58,7 @@ class Result:
 
 class Hu:
     def __init__(self, args):
-        #self.bin = os.path.basename(os.path.dirname(__file__)) + "-" + args.a
+        self.bin = os.path.basename(os.path.dirname(__file__)) + "-" + args.a
         self.target_dir = 'target'
         self.tools = 'tools'
         self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin + '.exe'))
@@ -113,8 +113,8 @@ class Hu:
 
         # execute test
         st = time.time()
-        #stderr = self.run(inf, outf)
-        stderr = self.run_tester(inf, outf) # インタラクティブ問題用
+        stderr = self.run(inf, outf)
+        #stderr = self.run_tester(inf, outf) # インタラクティブ問題用
         en = time.time()
         elapsed = en - st
 
