@@ -27,7 +27,7 @@ impl SimulatedAnnealing {
             limit,
             score: i64::MINF,
             ordering: Ordering::Greater,
-            rng: rand_pcg::Pcg64Mcg::from_entropy(),
+            rng: rand_pcg::Pcg64Mcg::from_os_rng(),
             temp: 0.,
             iter: 0,
             updated: [0; M],
