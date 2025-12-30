@@ -1,0 +1,24 @@
+---
+type: Batch
+timelimit: 3s
+match: Lines
+
+cases:
+  - name: sample1
+    in: |
+      4
+      ooxo
+      abrakadabra
+      atcoderbeginnercontest
+      baabca
+    out: |
+      Bob
+      Alice
+      Alice
+      Bob
+
+extend:
+  - type: Text
+    path: "./g"
+    in: /in/*.txt
+    out: /out/*.txt
