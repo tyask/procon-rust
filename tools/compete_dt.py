@@ -16,7 +16,7 @@ Rustのソースファイルに以下のような文字列を埋め込むこと�
 """
 
 def lookup_problem(src):
-    pattern = re.compile('CONTEST\(((?P<CONTEST2>.*):)?(?P<CONTEST>.*)-(?P<PROBLEM>.*?)\)(?P<FORCE> -f)?')
+    pattern = re.compile(r'CONTEST\(((?P<CONTEST2>.*):)?(?P<CONTEST>.*)-(?P<PROBLEM>.*?)\)(?P<FORCE> -f)?')
     with open(src, 'r', encoding='utf-8') as f:
         matched = [line for line in f.readlines() if pattern.search(line)]
         if not matched:
@@ -53,7 +53,7 @@ def write_url_to_cargo(cargo, bin, url):
     # b = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" } (*)
     # 
     # (*)の行を置換する
-    p1 = re.compile('{}\s*=\s*{{\s*problem\s*=\s*"(?P<URL>.*?)"\s*}}'.format(bin))
+    p1 = re.compile(r'{}\s*=\s*{{\s*problem\s*=\s*"(?P<URL>.*?)"\s*}}'.format(bin))
     tmp = 'Cargo_tmp.toml'
     need_download_testcases = False
     with open(tmp, 'w') as w:
