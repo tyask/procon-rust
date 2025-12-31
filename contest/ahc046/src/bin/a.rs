@@ -220,7 +220,7 @@ fn solve() {
 }
 
 fn solve0() {
-    let mut rng = rand_pcg::Pcg64Mcg::from_entropy();
+    let mut rng = rand_pcg::Pcg64Mcg::from_os_rng();
     let input = Input::new(&mut rng);
     let mut beam = {
         let state = State::new(&input);
