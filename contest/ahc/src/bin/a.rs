@@ -21,6 +21,7 @@ impl Io {
     }
 }
 
+#[allow(dead_code)]
 struct Context {
     rng: Pcg64Mcg,
 }
@@ -50,6 +51,7 @@ impl Result {
     }
 }
 
+#[allow(dead_code)]
 struct Solver<'a> {
     io: &'a Io,
 }
@@ -61,6 +63,7 @@ impl<'a> Solver<'a> {
         }
     }
 
+    #[allow(unused_variables)]
     fn solve(&mut self, ctx: &mut Context) -> Result {
         let res = Result::new();
         res
