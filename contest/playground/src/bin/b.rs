@@ -1,7 +1,5 @@
 #![allow(unused_imports)]
-use std::{cmp::*, collections::*, fmt::format, iter::*, ops::*, *};
-use itertools::Itertools;
-use superslice::*;
+use std::{*, collections::*, ops::*, cmp::*, iter::*};
 use proconio::{input, fastout};
 use common::*;
 use fumin::*;
@@ -10,38 +8,9 @@ fn main() {
     solve();
 }
 
-// CONTEST(abc214-e)
+// CONTEST(abcXXX-a)
 #[fastout]
 fn solve() {
-    input! {t:us}
-    for _ in 0..t {
-        input! {n:us,lr:[(us,us);n]}
-        let mut m = map::new();
-        for &(l,r) in &lr { m.entry(l).or_insert_with(||Vec::new()).push(r); }
-        let mut ks = deque::from(m.keys().sorted().cv());
-        let mut q = bheap::new();
-        let mut ans = true;
-        let mut i = 1;
-        'A: while i <= 1_000_000_000 {
-            if q.is_empty() && ks.is_empty() { break; }
-            if let Some(v) = m.get(&i) {
-                for &r in v { q.push(Reverse(r)); }
-                ks.pop_front();
-            } else if q.is_empty() {
-                if let Some(&k) = ks.pop_front() {
-                    i = k;
-                    for &r in &m[&i] { q.push(Reverse(r)); }
-                }
-            }
-
-            while let Some(Reverse(r)) = q.pop() {
-                if r < i { ans = false; break 'A; }
-                i += 1;
-            }
-        }
-
-        println!("{}", Yes(ans));
-    }
 }
 
 // #CAP(fumin::modint)
@@ -184,7 +153,7 @@ pub fn ceil<N: SimplePrimInt>(a: N, b: N) -> N { (a + b - N::one()) / b }
 pub fn asc <T:Ord>(a: &T, b: &T) -> cmp::Ordering { a.cmp(b) }
 pub fn desc<T:Ord>(a: &T, b: &T) -> cmp::Ordering { b.cmp(a) }
 pub fn to_int<T:Zero+One>(a: bool) -> T { if a { T::one() } else { T::zero() } }
-pub fn minmax<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
+pub fn min_max<T: Ord+Copy>(a: T, b: T) -> (T, T) { (cmp::min(a,b), cmp::max(a,b)) }
 pub fn bin_search<T: ExPrimInt+Shr<Output=T>>(mut ok: T, mut ng: T, f: impl Fn(T)->bool) -> T {
     while abs_diff(ok, ng) > T::one() {
         let m = (ok + ng) >> T::one();
@@ -203,10 +172,10 @@ pub trait IterTrait : Iterator {
         CountIter::new(self)
     }
     fn grouping_to_bmap<'a, K:Ord+Clone, V>(&'a mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> bmap<K, Vec<V>> {
-        self.fold(bmap::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
+        self.fold(bmap::<_,_>::new(), |mut m, x| { m.entry(get_key(&x)).or_default().push(get_val(&x)); m })
     }
     fn grouping_to_map<K:Eq+hash::Hash+Clone, V>(&mut self, get_key: impl Fn(&Self::Item)->K, get_val: impl Fn(&Self::Item)->V) -> map<K, Vec<V>> {
-        self.fold(map::<_,_>::new(), |mut m, x| { m.or_def_mut(&get_key(&x)).push(get_val(&x)); m })
+        self.fold(map::<_,_>::new(), |mut m, x| { m.entry(get_key(&x)).or_default().push(get_val(&x)); m })
     }
     fn cv(&mut self) -> Vec<Self::Item> { self.collect_vec() }
 
@@ -231,7 +200,7 @@ impl<I: Iterator, C> CountIter<I, C>
         let mut cnt = map::new();
         let mut keys = Vec::new();
         while let Some(e) = iter.next() {
-            *cnt.or_def_mut(&e) += C::one();
+            *cnt.entry(e.clone()).or_default() += C::one();
             if cnt[&e] == C::one() { keys.push(e); }
         }
         let nexts = deque::from_iter(
@@ -271,9 +240,6 @@ impl<I, T, U> PairOrdIterTrait<T, U>  for I where I: Iterator<Item=(T,U)>, T: Or
 
 
 // Vec
-pub trait VecFill<T> { fn fill(&mut self, t: T); }
-impl<T:Clone> VecFill<T> for [T] { fn fill(&mut self, t: T) { self.iter_mut().for_each(|x| *x = t.clone()); } }
-
 pub trait VecCount<T> { fn count(&self, f: impl FnMut(&T)->bool) -> us; }
 impl<T> VecCount<T> for [T] { fn count(&self, mut f: impl FnMut(&T)->bool) -> us { self.iter().filter(|&x|f(x)).count() } }
 
@@ -307,48 +273,6 @@ impl<T> DequePush<T> for VecDeque<T> { fn push(&mut self, t: T) { self.push_back
 
 pub trait DequePop<T> { fn pop(&mut self) -> Option<T>; }
 impl<T> DequePop<T> for VecDeque<T> { fn pop(&mut self) -> Option<T> { self.pop_back() } }
-
-// Map
-pub trait MapOrDef<K,V> { fn or_def(&self, k: &K) -> V; }
-pub trait MapOrDefMut<K,V> { fn or_def_mut(&mut self, k: &K) -> &mut V; }
-pub trait MapOr<K,V> { fn or<'a>(&'a self, k: &K, v: &'a  V) -> &'a V; }
-
-impl<K:Eq+hash::Hash, V:Default+Clone> MapOrDef<K, V> for map<K, V> {
-    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
-}
-impl<K:Eq+hash::Hash+Clone, V:Default> MapOrDefMut<K, V> for map<K, V> {
-    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
-}
-impl<K:Eq+hash::Hash, V> MapOr<K, V> for map<K, V> {
-    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
-}
-
-impl<K:Ord, V:Default+Clone> MapOrDef<K, V> for bmap<K, V> {
-    fn or_def(&self, k: &K) -> V { self.get(&k).cloned().unwrap_or_default() }
-}
-impl<K:Ord+Clone, V:Default> MapOrDefMut<K, V> for bmap<K, V> {
-    fn or_def_mut(&mut self, k: &K) -> &mut V { self.entry(k.clone()).or_default() }
-}
-impl<K:Ord, V> MapOr<K, V> for bmap<K, V> {
-    fn or<'a>(&'a self, k: &K, v: &'a V) -> &'a V  { self.get(&k).unwrap_or(v) }
-}
-pub trait BMapTrait<K,V> {
-    fn lower_bound(&self, k: &K) -> Option<(&K, &V)>;
-    fn upper_bound(&self, k: &K) -> Option<(&K, &V)>;
-}
-impl<K:Ord, V> BMapTrait<K, V> for bmap<K, V> {
-    fn lower_bound(&self, k: &K) -> Option<(&K, &V)> { self.range(k..).next() }
-    fn upper_bound(&self, k: &K) -> Option<(&K, &V)> { self.range((Bound::Excluded(k), Bound::Unbounded)).next() }
-}
-
-pub trait BSetTrait<T> {
-    fn lower_bound(&self, t: &T) -> Option<&T>;
-    fn upper_bound(&self, t: &T) -> Option<&T>;
-}
-impl<T:Ord> BSetTrait<T> for bset<T> {
-    fn lower_bound(&self, t: &T) -> Option<&T> { self.range(t..).next() }
-    fn upper_bound(&self, t: &T) -> Option<&T> { self.range((Bound::Excluded(t), Bound::Unbounded)).next() }
-}
 
 pub trait Identify {
     type Ident;
@@ -415,6 +339,21 @@ impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e|
 
     (@debug $a:expr, $($b:expr),*) => {{ format!("{} {}", fmt!(@debug ($a)), fmt!(@debug $($b),*)) }};
     (@debug $a:expr)               => {{ format!("{:?}", ($a)) }};
+}
+
+#[macro_export] macro_rules! vprintln {
+    ($a:expr) => { for x in &($a) { println!("{}", x); } };
+}
+#[macro_export] macro_rules! vprintsp {
+    ($a:expr) => {
+        {
+            use itertools::Itertools;
+            println!("{}", ($a).iter().join(" "));
+        }
+    }
+}
+#[macro_export] macro_rules! print_grid {
+    ($a:expr) => { for v in &($a) { println!("{}", v.iter().collect::<Str>()); } };
 }
 
 #[macro_export]#[cfg(feature="local")] macro_rules! debug {
