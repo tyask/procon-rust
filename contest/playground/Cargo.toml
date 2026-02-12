@@ -5,7 +5,7 @@ edition = "2018"
 default-run = "a"
 
 [package.metadata.cargo-compete.bin]
-a = { problem = "https://atcoder.jp/contests/abc213/tasks/abc213_e" }
+a = { problem = "https://atcoder.jp/contests/awc0004/tasks/awc0004_e" }
 b = { problem = "https://atcoder.jp/contests/abc318/tasks/abc318_d" }
 c = { problem = "https://atcoder.jp/contests/abc391/tasks/abc391_e" }
 

@@ -8,13 +8,70 @@ fn main() {
     solve();
 }
 
-// CONTEST(abcXXX-a)
+// CONTEST(awc0004-e)
 #[fastout]
 fn solve() {
+    input! {n:us,k:i64,a:[i64;n]}
+    let cs = cumsum::CumSum::new(&a);
+    let mut cnt = bmap::<i64,us>::new();
+    for i in 0..=n { *cnt.entry(cs.sum(..i)).or_default() += 1; }
+    // for &x in &cs.s { *cnt.entry(x).or_default() += 1; }
+    debug!(cs.s);
+    let mut ans = 0;
+    for l in 0..=n {
+        cnt.entry(cs.sum(..l)).and_modify(|x|*x-=1);
+        ans += cnt.get(&(k+cs.sum(..l))).cloned().unwrap_or(0);
+        debug!(l,cs.sum(..l),cnt, ans);
+    }
+    println!("{}", ans);
 }
 
 // #CAP(fumin::modint)
 pub mod fumin {
+pub mod cumsum {
+#![allow(dead_code)]
+use std::ops::{RangeBounds, Sub};
+use num::Zero;
+use crate::common::*;
+use super::range_bounds_ex::RangeBoundsEx;
+
+pub struct CumSum<N> { pub s: Vec<N> }
+impl<N: Clone+Copy+Zero+Sub<Output=N>> CumSum<N> {
+    pub fn new(v: &[N]) -> Self {
+        let mut s = vec![N::zero(); v.len() + 1];
+        for i in 0..v.len() { s[i+1] = s[i] + v[i]; }
+        Self { s }
+    }
+    pub fn sum(&self, r: impl RangeBounds<us>) -> N {
+        let (l, r) = r.clamp(0, self.s.len() - 1);
+        self.s[r] - self.s[l]
+    }
+}
+}
+pub mod range_bounds_ex {
+#![allow(dead_code)]
+use std::{ops::{RangeBounds, Add}, cmp};
+use num::One;
+
+pub trait RangeBoundsEx<T: Copy+Ord+Add<Output=T>+One>: RangeBounds<T> {
+    // このrangeを[low,high]内に収める
+    fn clamp(&self, low: T, high: T) -> (T, T) {
+        let s = match self.start_bound() {
+            std::ops::Bound::Included(&v) => v,
+            std::ops::Bound::Excluded(&v) => v + T::one(),
+            std::ops::Bound::Unbounded    => low,
+        }; 
+        let e = match self.end_bound() {
+            std::ops::Bound::Included(&v) => v + T::one(),
+            std::ops::Bound::Excluded(&v) => v,
+            std::ops::Bound::Unbounded    => high,
+        }; 
+        (cmp::max(s, low), cmp::min(e, high))
+    }
+}
+
+impl<T:Copy+Ord+Add<Output=T>+One, R: RangeBounds<T>> RangeBoundsEx<T> for R { }
+}
 }
 
 pub mod common {
