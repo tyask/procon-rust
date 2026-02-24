@@ -35,9 +35,10 @@ args = ["build", "--release", "--target-dir", "target"]
 
 # Run the user's program
 [[test.test_steps]]
-program = "./target/release/a.exe"
+program = "./target/release/a" # for linux
+#program = "./target/release/a.exe" # for win
 args = []
-stdin = "./tools/in/{SEED04}.txt"
+stdin =  "./tools/inA/{SEED04}.txt"
 stdout = "./tools/out/{SEED04}.txt"
 stderr = "./tools/err/{SEED04}.txt"
 measure_time = true
@@ -48,9 +49,9 @@ program = "cargo"
 args = [
     "run",
     "--bin",
-    "vis",
+    "score",
     "--release",
-    "./in/{SEED04}.txt",
+    "./inA/{SEED04}.txt",
     "./out/{SEED04}.txt",
 ]
 
