@@ -1,0 +1,59 @@
+[general]
+version = "0.2.0"
+
+[problem]
+problem_name = "master2025-qual"
+objective = "Max"
+score_regex = '(?m)^\s*Score\s*=\s*(?P<score>\d+)\s*$'
+
+[test]
+start_seed = 0
+end_seed = 5
+threads = 0
+out_dir = "./pahcer"
+
+# ==============================
+#         COMPILE STEPS
+# ==============================
+
+# Compile user's program
+[[test.compile_steps]]
+program = "cargo"
+args = ["build", "--release", "--target-dir", "target"]
+
+# Move the compiled binary to the current directory (override the old binary)
+#[[test.compile_steps]]
+#program = "powershell.exe"
+#args = [
+#    "-Command",
+#    "Move-Item ./target/release/ahc043-b.exe ./ahc043.exe -Force",
+#]
+
+# ==============================
+#           TEST STEPS
+# ==============================
+
+# Run the user's program
+[[test.test_steps]]
+program = "./target/release/a.exe"
+args = []
+stdin = "./tools/in/{SEED04}.txt"
+stdout = "./tools/out/{SEED04}.txt"
+stderr = "./tools/err/{SEED04}.txt"
+measure_time = true
+
+# Run the visualizer to calculate the score
+[[test.test_steps]]
+program = "cargo"
+args = [
+    "run",
+    "--bin",
+    "vis",
+    "--release",
+    "./in/{SEED04}.txt",
+    "./out/{SEED04}.txt",
+]
+
+current_dir = "./tools"
+measure_time = false
+
