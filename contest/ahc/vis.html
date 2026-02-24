@@ -1,0 +1,135 @@
+<html><head><style>body { font-family: monospace; margin: 20px; }table { border-collapse: collapse; margin: 20px 0; table-layout: fixed; }th, td { border: 1px solid #ccc; padding: 8px; text-align: center; width: 90px; overflow: hidden; font-size: 13px; }th { background-color: #f0f0f0; }.info { margin: 10px 0; font-size: 14px; }.action { color: blue; font-weight: bold; }.error { color: red; font-weight: bold; }.apples-per-turn { color: green; }.controls { margin: 20px 0; }</style></head><body><h2>Score: 0</h2><div class='error'>Error: Incomplete output: 0 / 500 actions</div><div class='controls'>Turn: <input type='range' id='turnSlider' min='0' max='0' value='0' style='width: 400px;'> <span id='turnLabel'>0</span> / 500</div><div class='controls'>Color mode: <select id='colorMode' onchange='showTurn(currentTurn)'><option value='3'>P</option><option value='2'>log(B)</option><option value='1'>Cost efficiency</option></select></div><div id='state'></div><script>
+const states = [{"B":[[1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1]],"P":[[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0]],"apples":1,"apples_per_turn":0,"action":null}];
+const inputData = {N: 10, L: 4, T: 500, A: [1,1,6,11,13,14,16,30,55,94], C: [[1,41,10,34,15,1000,303,2817,4565,161],[527,758,3343,67578,67606,30857,40994,546215,66532,94318],[390976,579914,10538134,88219175,58224632,44924335,39583623,406866164,125240090,121046798],[638185790,140957654,34860549650,7383759210,84392169714,47454238885,6700238838,125312906000,10302878548,1021283373879]]};
+
+    let currentTurn = states.length - 1;
+
+    function formatB(n) {
+        if (n === 0) return "0";
+        const absN = Math.abs(n);
+        const exp = Math.floor(Math.log10(absN));
+        if (exp <= 3) {
+            return String(n);
+        } else {
+            const mantissa = absN / Math.pow(10, exp);
+            const sign = n < 0 ? "-" : "";
+            return sign + mantissa.toFixed(3) + "E" + exp;
+        }
+    }
+
+    function valueToColor(val) {
+        val = Math.max(0, Math.min(1, val));
+        let r, g, b;
+        if (val < 0.5) {
+            const t = val * 2.0;
+            r = Math.round(200.0 * (1.0 - t) + 200.0 * t);
+            g = Math.round(220.0 * (1.0 - t) + 235.0 * t);
+            b = Math.round(255.0 * (1.0 - t) + 200.0 * t);
+        } else {
+            const t = (val - 0.5) * 2.0;
+            r = Math.round(200.0 * (1.0 - t) + 255.0 * t);
+            g = Math.round(235.0 * (1.0 - t) + 200.0 * t);
+            b = Math.round(200.0 * (1.0 - t) + 200.0 * t);
+        }
+        return '#' + r.toString(16).padStart(2, '0') + g.toString(16).padStart(2, '0') + b.toString(16).padStart(2, '0');
+    }
+
+    const costEff = [];
+    for (let level = 0; level < inputData.L; level++) {
+        costEff[level] = [];
+        for (let id = 0; id < inputData.N; id++) {
+            const base = inputData.A[id] * Math.pow(500, level);
+            if (base > 0 && inputData.C[level][id] > 0) {
+                costEff[level][id] = Math.log10(inputData.C[level][id] / base);
+            } else {
+                costEff[level][id] = 0;
+            }
+        }
+    }
+
+    function isLastAction(state, level, id) {
+        return state.action && state.action.Upgrade && state.action.Upgrade[0] === level && state.action.Upgrade[1] === id;
+    }
+
+    function getCellColor(state, level, id, colorMode) {
+        if (colorMode === 1) {
+            const val = costEff[level][id] / 2.0;
+            return valueToColor(val);
+        } else if (colorMode === 2) {
+            let maxLogB = 0;
+            for (let l = 0; l < inputData.L; l++) {
+                for (let i = 0; i < inputData.N; i++) {
+                    if (state.B[l][i] > 0) {
+                        maxLogB = Math.max(maxLogB, Math.log10(state.B[l][i]));
+                    }
+                }
+            }
+            if (maxLogB > 0 && state.B[level][id] > 1) {
+                const val = Math.log10(state.B[level][id]) / maxLogB;
+                return valueToColor(val);
+            } else {
+                return valueToColor(0);
+            }
+        } else {
+            let maxP = 0;
+            for (let l = 0; l < inputData.L; l++) {
+                for (let i = 0; i < inputData.N; i++) {
+                    maxP = Math.max(maxP, state.P[l][i]);
+                }
+            }
+            if (maxP > 0 && state.P[level][id] > 0) {
+                const val = state.P[level][id] / maxP;
+                return valueToColor(val);
+            } else {
+                return valueToColor(0);
+            }
+        }
+    }
+
+    function showTurn(t) {
+        if (t >= states.length) t = states.length - 1;
+        currentTurn = t;
+        const state = states[t];
+        const colorMode = parseInt(document.getElementById('colorMode').value);
+        const score = state.apples > 0 ? Math.round(100000 * Math.log2(state.apples)) : 0;
+        let html = '<div class="info">Turn: ' + t + ' / ' + inputData.T + '  |  Apples: ' + formatB(state.apples) + '  |  Score: ' + score + '</div>';
+        html += '<div class="apples-per-turn">Apples per turn: ' + formatB(state.apples_per_turn) + '</div>';
+
+        if (state.action) {
+            if (state.action.Upgrade) {
+                html += '<div class="action">Action: Upgrade level=' + state.action.Upgrade[0] + ', id=' + state.action.Upgrade[1] + '</div>';
+            } else if (state.action === "Nothing") {
+                html += '<div class="action">Action: Nothing</div>';
+            }
+        } else {
+            html += '<div class="info">Initial state</div>';
+        }
+
+        html += '<h3>Machines</h3><table><tr><th>Level \\ ID</th>';
+        for (let id = 0; id < inputData.N; id++) {
+            html += '<th>ID ' + id + '<br>A=' + inputData.A[id] + '</th>';
+        }
+        html += '</tr>';
+
+        for (let level = 0; level < inputData.L; level++) {
+            html += '<tr><th>Level ' + level + '</th>';
+            for (let id = 0; id < inputData.N; id++) {
+                const cost = inputData.C[level][id] * (state.P[level][id] + 1);
+                const bgColor = getCellColor(state, level, id, colorMode);
+                const borderStyle = isLastAction(state, level, id) ? 'border: 3px solid #ffcc00;' : '';
+                html += '<td style="background-color:' + bgColor + ';' + borderStyle + '">B=' + formatB(state.B[level][id]) + '<br>P=' + state.P[level][id] + '<br>C=' + formatB(cost) + '</td>';
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+
+        document.getElementById('state').innerHTML = html;
+        document.getElementById('turnLabel').textContent = t;
+    }
+
+    document.getElementById('turnSlider').addEventListener('input', function(e) {
+        showTurn(parseInt(e.target.value));
+    });
+
+    showTurn(states.length - 1);
+    </script></body></html>

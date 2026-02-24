@@ -39,14 +39,6 @@ def generate_problem_url(prob):
     contest2 = contest if contest2 is None else contest2
     return 'https://atcoder.jp/contests/{}/tasks/{}_{}'.format(contest2, contest, problem)
 
-def can_open_url(url):
-    try:
-        with urllib.request.urlopen(url) as res:
-            return True
-    except urllib.error.URLError as e:
-        print("Failed to open url: {} (code={}, reason={})".format(url, e.code, e.reason))
-        return False
-
 def write_url_to_cargo(cargo, bin, url):
     # [package.metadata.cargo-compete.bin]
     # a = { problem = "https://atcoder.jp/contests/abc200/tasks/abc200_a" } (*)
@@ -116,9 +108,6 @@ def main():
     bin = lookup_bin(src)
     url = generate_problem_url(prob)
     force_download = prob[3] or args.force_download
-
-    if not can_open_url(url):
-        return
 
     print('bin={}'.format(bin))
     print('url={}'.format(url))

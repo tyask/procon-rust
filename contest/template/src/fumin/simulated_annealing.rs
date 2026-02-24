@@ -55,7 +55,7 @@ impl SimulatedAnnealing {
         // 改善されていない場合でも時間と差分に応じた確率で遷移させる (焼きなまし)
         // scoreを最大化するように実装してるので、最小化したい場合は負にする必要あり.
         let improved = delta.cmp(&0) == self.ordering;
-        if improved || self.rng.gen_bool(f64::exp(delta.f64() / self.temp)) {
+        if improved || self.rng.random_bool(f64::exp(delta.f64() / self.temp)) {
             self.score += delta;
             if improved { self.updated[(elapsed/self.limit*M.f64()).us()] += 1; }
             true

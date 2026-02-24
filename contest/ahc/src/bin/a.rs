@@ -3,75 +3,83 @@ use std::{*, collections::*, ops::*, cmp::*, iter::*};
 use proconio::{input, fastout};
 use common::*;
 use fumin::*;
+use rand::SeedableRng;
+use rand_pcg::Pcg64Mcg;
 
 fn main() {
     solve();
 }
 
-// CONTEST(awc0004-e)
-#[fastout]
-fn solve() {
-    input! {n:us,k:i64,a:[i64;n]}
-    let cs = cumsum::CumSum::new(&a);
-    let mut cnt = bmap::<i64,us>::new();
-    for i in 0..=n { *cnt.entry(cs.sum(..i)).or_default() += 1; }
-    // for &x in &cs.s { *cnt.entry(x).or_default() += 1; }
-    debug!(cs.s);
-    let mut ans = 0;
-    for l in 0..=n {
-        cnt.entry(cs.sum(..l)).and_modify(|x|*x-=1);
-        ans += cnt.get(&(k+cs.sum(..l))).cloned().unwrap_or(0);
-        debug!(l,cs.sum(..l),cnt, ans);
+struct Io {
+
+}
+
+impl Io {
+    fn new() -> Self {
+        Self {
+        }
     }
-    println!("{}", ans);
+}
+
+#[allow(dead_code)]
+struct Context {
+    rng: Pcg64Mcg,
+}
+
+impl Context {
+    fn new() -> Self {
+        Self {
+            // rng: Pcg64Mcg::from_os_rng(),
+            rng: Pcg64Mcg::seed_from_u64(0),
+        }
+    }
+}
+
+struct Result {
+
+}
+
+impl Result {
+    fn new() -> Self {
+        Self {
+        }
+    }
+
+    #[fastout]
+    fn print(&self) {
+
+    }
+}
+
+#[allow(dead_code)]
+struct Solver<'a> {
+    io: &'a Io,
+}
+
+impl<'a> Solver<'a> {
+    fn new(io: &'a Io) -> Self {
+        Self {
+            io,
+        }
+    }
+
+    #[allow(unused_variables)]
+    fn solve(&mut self, ctx: &mut Context) -> Result {
+        let res = Result::new();
+        res
+    }
+}
+
+fn solve() {
+    let io = Io::new();
+    let mut ctx = Context::new();
+    let mut solver = Solver::new(&io);
+    let res = solver.solve(&mut ctx);
+    res.print();
 }
 
 // #CAP(fumin::modint)
 pub mod fumin {
-pub mod cumsum {
-#![allow(dead_code)]
-use std::ops::{RangeBounds, Sub};
-use num::Zero;
-use crate::common::*;
-use super::range_bounds_ex::RangeBoundsEx;
-
-pub struct CumSum<N> { pub s: Vec<N> }
-impl<N: Clone+Copy+Zero+Sub<Output=N>> CumSum<N> {
-    pub fn new(v: &[N]) -> Self {
-        let mut s = vec![N::zero(); v.len() + 1];
-        for i in 0..v.len() { s[i+1] = s[i] + v[i]; }
-        Self { s }
-    }
-    pub fn sum(&self, r: impl RangeBounds<us>) -> N {
-        let (l, r) = r.clamp(0, self.s.len() - 1);
-        self.s[r] - self.s[l]
-    }
-}
-}
-pub mod range_bounds_ex {
-#![allow(dead_code)]
-use std::{ops::{RangeBounds, Add}, cmp};
-use num::One;
-
-pub trait RangeBoundsEx<T: Copy+Ord+Add<Output=T>+One>: RangeBounds<T> {
-    // このrangeを[low,high]内に収める
-    fn clamp(&self, low: T, high: T) -> (T, T) {
-        let s = match self.start_bound() {
-            std::ops::Bound::Included(&v) => v,
-            std::ops::Bound::Excluded(&v) => v + T::one(),
-            std::ops::Bound::Unbounded    => low,
-        }; 
-        let e = match self.end_bound() {
-            std::ops::Bound::Included(&v) => v + T::one(),
-            std::ops::Bound::Excluded(&v) => v,
-            std::ops::Bound::Unbounded    => high,
-        }; 
-        (cmp::max(s, low), cmp::min(e, high))
-    }
-}
-
-impl<T:Copy+Ord+Add<Output=T>+One, R: RangeBounds<T>> RangeBoundsEx<T> for R { }
-}
 }
 
 pub mod common {
@@ -425,13 +433,5 @@ impl<T: Fmt> Fmt for bset<T>     { fn fmt(&self) -> String { self.iter().map(|e|
 #[macro_export]#[cfg(not(feature="local"))] macro_rules! debug2d {
     ($a:expr) => { };
 }
-
-pub fn yes(b: bool) -> &'static str { if b { "yes" } else { "no" } }
-pub fn Yes(b: bool) -> &'static str { if b { "Yes" } else { "No" } }
-pub fn YES(b: bool) -> &'static str { if b { "YES" } else { "NO" } }
-pub fn no(b: bool) -> &'static str { yes(!b) }
-pub fn No(b: bool) -> &'static str { Yes(!b) }
-pub fn NO(b: bool) -> &'static str { YES(!b) }
-
 
 }

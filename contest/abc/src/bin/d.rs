@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 use std::{*, collections::*, ops::*, cmp::*, iter::*};
-use itertools::{Itertools, iproduct};
 use proconio::{input, fastout};
 use common::*;
 use fumin::*;
@@ -12,53 +11,6 @@ fn main() {
 // CONTEST(abcXXX-a)
 #[fastout]
 fn solve() {
-    input! {n:us,m:us,a:[us;n]}
-    let ans = solve0(n,m,a.clone());
-    // let ans = solve1(n,m,a.clone());
-    println!("{}", ans);
-}
-
-fn solve0(n:us,m:us,a:Vec<us>) -> us {
-    let mut mem = vec![map::new(); 11];
-    for k in 1..=10usize {
-        for &x in &a {
-            let t = x * 10usize.pow(k.u32()) % m;
-            if !mem[k].contains_key(&t) { mem[k].insert(t, 0); }
-            *mem[k].get_mut(&t).unwrap() += 1;
-        }
-    }
-
-    let mut ans = 0usize;
-    for &x in &a {
-        let k = ndigits(x);
-        let c = mem[k].get(&((m-x%m)%m)).unwrap_or(&0);
-        // debug!(x, k, c);
-        ans += c;
-    }
-    ans
-}
-
-fn solve1(n:us,m:us,a:Vec<us>) -> us {
-    let mut ans = 0;
-    for (i,j) in iproduct!(0..n,0..n) {
-        let x = a[i] * 10usize.pow(ndigits(a[j]).u32()) + a[j];
-        if x % m == 0 {
-            ans += 1;
-            debug!(i,j,a[i],a[j]);
-        }
-    }
-    ans
-}
-
-pub fn ndigits<N:IntoT<us>>(n: N) -> us {
-    use superslice::*;
-    const POW10: [us; 20] = {
-        let mut a = [1; 20];
-        let mut i = 0;
-        while i < 19 { a[i+1] = a[i] * 10; i += 1; }
-        a
-    };
-    POW10.upper_bound(&n.into_t())
 }
 
 // #CAP(fumin::modint)
