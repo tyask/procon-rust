@@ -12,7 +12,7 @@ from concurrent.futures import ProcessPoolExecutor
 以下のようなプロジェクト構成になっていることを前提とする.
 ahc001/
  + hu.py
- + target/release/ahc001-a.exe (Rustの場合)
+ + target/release/a.exe (Rustの場合)
  + tools/
     + vis.exe
     + in/
@@ -34,7 +34,7 @@ class Result:
     def _score(self):
         # ビジュアライザの出力からスコアを取得する. vis.exeの出力仕様に応じて変更する必要あり.
         for line in self.visout.split('\n'):
-            m = re.search('Score = (\d+)', line)
+            m = re.search('Score = (\\d+)', line)
             if m:
                 return int(m[1])
         return 0
@@ -63,11 +63,11 @@ class Hu:
         self.target_dir = 'target'
         self.tools = 'tools'
         self.exe = os.path.abspath(os.path.join(self.target_dir, 'release', self.bin + '.exe'))
-        self.vis = os.path.abspath(os.path.join(self.tools, 'score.exe'))
+        self.vis = os.path.abspath(os.path.join(self.tools, 'score'))
         self.tester = os.path.abspath(os.path.join(self.tools, 'tester.exe'))
         self.cases = self._parse_cases(args)
         self.args = args
-        self.max_workers = 5
+        self.max_workers = os.cpu_count()
 
     def _parse_cases(self, args):
         if not args.cases:
@@ -84,14 +84,11 @@ class Hu:
         return ret
 
     def cargo_build(self):
-        sb.run('cargo build --release --target-dir {} -q'.format(self.target_dir),
+        sb.run('cargo build --release --bin {} --target-dir {} -q'.format(self.bin, self.target_dir),
             shell=True, check=True, stderr=sb.DEVNULL)
 
     def input_file(self, case):
-        #return os.path.join(self.tools, 'in', '{:04d}.txt'.format(case))
-        return os.path.join(self.tools, 'inA', '{:04d}.txt'.format(case))
-        #return os.path.join(self.tools, 'inB', '{:04d}.txt'.format(case))
-        #return os.path.join(self.tools, 'inC', '{:04d}.txt'.format(case))
+        return os.path.join(self.tools, self.args.in_dir, '{:04d}.txt'.format(case))
 
     def output_file(self, case):
         return os.path.join(self.tools, 'out', '{:04d}.txt'.format(case))
@@ -106,7 +103,6 @@ class Hu:
     def run_tester(self, inf, outf):
         return sb.run('{} {} > {}'.format(self.tester, self.cmd(inf), outf), shell=True, check=True, capture_output=True, text=True).stderr
 
-
     def exe_vis(self, inf, outf):
         return sb.run('{} {} {}'.format(self.vis, inf, outf), shell=True, check=True, capture_output=True, text=True).stdout
 
@@ -114,11 +110,12 @@ class Hu:
         inf  = self.input_file(case)
         outf = self.output_file(case)
         os.makedirs(os.path.dirname(outf), exist_ok=True)
+        os.environ['IN_FILE']=inf
 
         # execute test
         st = time.time()
         stderr = self.run(inf, outf)
-        # stderr = self.run_tester(inf, outf) # インタラクティブ問題用
+        #stderr = self.run_tester(inf, outf) # インタラクティブ問題用
         en = time.time()
         elapsed = en - st
 
@@ -166,8 +163,9 @@ def parse_args():
     parser.add_argument('cases', metavar='CASES', nargs='*', help='cases to execute. ex) 0 1 3-5')
     parser.add_argument('-a', '--a', help='execute file', default='a')
     parser.add_argument('-r', '--run', action='store_true', help='execute program without evaluation')
-    parser.add_argument('-s', '--single', action='store_true', help='execute program on single thread')
+    parser.add_argument('-s', '--single', action='store_true', default=False, help='execute program on single thread')
     parser.add_argument('-m', '--multi', action='store_true', default=True, help='execute program on mutiple thread')
+    parser.add_argument('-indir', '--in-dir', default='in', help='input directory')
     return parser.parse_args()
 
 def main():
