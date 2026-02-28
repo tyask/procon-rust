@@ -35,7 +35,7 @@ pub mod range_bounds_ex;
 pub mod rev_bheap;
 pub mod rolling_hash;
 pub mod segtree;
-pub mod simulated_annealing;
+pub mod sa;
 pub mod tree;
 pub mod tree_beam;
 pub mod unionfind;
