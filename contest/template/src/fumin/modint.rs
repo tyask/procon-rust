@@ -26,6 +26,16 @@ impl<const M: i64> Modint<M> {
         a
     }
     pub fn inv(self) -> Modint<M> { self.pow((M-2) as i64) }
+
+    // O(k)でnCkを計算
+    pub fn combination(n:us,k:us) -> Modint<M> {
+        if n < k { return Self::zero(); }
+        if n == k { return Self::one(); }
+        let mut ret = Self::one();
+        for i in 1..=k { ret *= Self::new(n - i + 1) / i; }
+        ret
+    }
+
     fn normalize(&mut self) { if self.val >= M { self.val -= M; } }
 }
 

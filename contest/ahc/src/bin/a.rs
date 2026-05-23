@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use std::{*, collections::*, ops::*, cmp::*, iter::*};
+use std::{cmp::*, collections::*, iter::*, ops::*, time::Instant, *};
 use proconio::{input, fastout};
 use common::*;
 use fumin::*;
@@ -10,15 +10,23 @@ fn main() {
     solve();
 }
 
+const TIME_LIMIT: u128 = 1980;
+
 struct Io {
+    st: Instant,
 
 }
 
 impl Io {
     fn new() -> Self {
+        let st = Instant::now();
         Self {
+            st,
         }
     }
+
+    #[allow(unused)]
+    fn is_time_up(&self) -> bool { self.st.elapsed().as_millis() >= TIME_LIMIT }
 }
 
 #[allow(dead_code)]
