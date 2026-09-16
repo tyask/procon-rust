@@ -10,34 +10,36 @@ import urllib.request
 """
 Rustのソースファイルに以下のような文字列を埋め込むことでその問題のテストケースをダウンロードしテストを実行する.
 // CONTEST(abc200-a)
+// CONTEST(https://atcoder.jp/contests/abc200/tasks/abc200_a)
 
 テストケースのダウンロード及び実行はcargo competeを用いる.
 既にテストケースがダウンロードされている場合は再ダウンロードはしない.
 """
 
 def lookup_problem(src):
-    pattern = re.compile(r'CONTEST\(((?P<CONTEST2>.*):)?(?P<CONTEST>.*)-(?P<PROBLEM>.*?)\)(?P<FORCE> -f)?')
+    pattern = re.compile(r'CONTEST\((?P<SPEC>.*?)\)')
     with open(src, 'r', encoding='utf-8') as f:
         matched = [line for line in f.readlines() if pattern.search(line)]
         if not matched:
             return None
         m = pattern.search(matched[0])
-        contest2 = m.group('CONTEST2')
-        contest = m.group('CONTEST')
-        problem = m.group('PROBLEM')
-        force = m.group('FORCE') is not None
-        return (contest2, contest, problem.lower(), force)
+        spec = m.group('SPEC')
+        if spec.startswith('http'):
+            return spec
+
+        m2 = re.fullmatch(r'(?P<CONTEST>.*)-(?P<PROBLEM>.*?)', spec)
+        if m2 is None:
+            return None
+        contest = m2.group('CONTEST')
+        problem = m2.group('PROBLEM')
+        url = 'https://atcoder.jp/contests/{}/tasks/{}_{}'.format(contest, contest, problem.lower())
+        return url
 
 def lookup_bin(src):
     return os.path.splitext(os.path.basename(src))[0].lower()
 
 def lookup_cargo(src):
     return os.path.normpath(os.path.join(os.path.dirname(src), '..', '..', 'Cargo.toml'))
-
-def generate_problem_url(prob):
-    contest2, contest, problem, _ = prob
-    contest2 = contest if contest2 is None else contest2
-    return 'https://atcoder.jp/contests/{}/tasks/{}_{}'.format(contest2, contest, problem)
 
 def write_url_to_cargo(cargo, bin, url):
     # [package.metadata.cargo-compete.bin]
@@ -106,8 +108,8 @@ def main():
 
     cargo = lookup_cargo(src)
     bin = lookup_bin(src)
-    url = generate_problem_url(prob)
-    force_download = prob[3] or args.force_download
+    url = prob
+    force_download = args.force_download
 
     print('bin={}'.format(bin))
     print('url={}'.format(url))

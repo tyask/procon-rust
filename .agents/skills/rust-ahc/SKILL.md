@@ -18,6 +18,7 @@ AHC の solver を Rust で進めるときは、まず問題文・入力形式�
 - 提出は単一ファイル前提にする。template utility を使う場合も library 参照にせず、必要な source を contest 側の `a.rs` にコピーする。
 - コピー後も template 側 API から大きく乖離させない。後で template へ戻しやすい形を保つ。
 - テストを書く場合はファイル末尾へまとめる。
+- なるべく詳しくコメントを書く。特に、なぜその実装を選んだのか、どこが重要なのか、どこがトレードオフなのかを説明する。
 
 ## 探索方針
 
@@ -60,7 +61,7 @@ loop {
 cargo check
 ```
 
-ローカル入力がある場合は、少なくとも 1 ケースを release で実行する。
+ローカル入力がある場合は、ケース0を release で実行する。複数ケースは実行しなくてよい。
 
 ```bash
 cargo run --release --bin a < tools/in/0000.txt

@@ -20,7 +20,8 @@ impl<N: Zero+Copy+Add<Output=N>+Sub<Output=N>> CumSum2d<N> {
         let s = &self.s;
         let (i1, i2) = ir.clamp(0, s.len()-1);
         let (j1, j2) = jr.clamp(0, s[0].len()-1);
-        s[i2][j2] - s[i1][j2] - s[i2][j1] + s[i1][j1]
+        // 矩形和が非負なら、この順序では符号なし整数でも中間値が負にならない。
+        s[i2][j2] + s[i1][j1] - s[i1][j2] - s[i2][j1]
     }
 
     pub fn sum0(&self, i: us, j: us) -> N { self.sum(..i, ..j) }

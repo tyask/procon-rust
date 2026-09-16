@@ -2,6 +2,7 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap, fmt::Debug};
 use rustc_hash::FxHashMap;
+use super::doubly_chained_tree;
 use crate::common::*;
 
 /*
@@ -59,7 +60,7 @@ impl beam::BeamState<Op> for State {
     }
 }
 
-let cfg = beam::Config { max_width: 1000, tern: LIMIT };
+let cfg = beam::Config { max_width: 1000, turn: LIMIT };
 let mut bs = beam::BeamSearch::<Op, State, beam::HashCandSelector<Op>>::new(
     cfg,
     State { score: 0, step: 0 },
@@ -73,6 +74,8 @@ pub use doubly_chained_tree::Node as Node;
 pub use doubly_chained_tree::NodeId as NodeId;
 pub use doubly_chained_tree::NodeValue as NodeValue;
 
+// CAP(fumin::doubly_chained_tree)
+
 // BeamSearch が要求する文脈インターフェース。
 // `apply/revert` は共有木を DFS で葉巡回するときに使われる。
 // `append_cands` は各葉状態で次遷移候補を生成する。
@@ -84,12 +87,20 @@ pub trait BeamState<Op: NodeValue> {
 
 // BeamState を木走査インターフェースへ橋渡しする。
 // これにより doubly_chained_tree 側は beam 固有 API を知らずに済む。
-impl<Op: NodeValue, St: BeamState<Op>> doubly_chained_tree::Context<Op> for St {
+struct BeamContext<'a, Op: NodeValue, State: BeamState<Op>> {
+    state: &'a mut State,
+    _marker: std::marker::PhantomData<fn(Op)>,
+}
+
+impl<Op: NodeValue, State: BeamState<Op>> doubly_chained_tree::Context<Op>
+    for BeamContext<'_, Op, State>
+{
     fn apply(&mut self, value: &Op) {
-        BeamState::apply(self, value);
+        self.state.apply(value);
     }
+
     fn revert(&mut self, value: &Op) {
-        BeamState::revert(self, value);
+        self.state.revert(value);
     }
 }
 
@@ -97,7 +108,7 @@ pub struct Config {
     // 各深さで最終的に保持する状態数（ソート + 重複排除後）。
     pub max_width: us,
     // 探索する最大深さ（ターン数）。
-    pub tern: us,
+    pub turn: us,
     // true の場合、is_end=true の候補が出たら探索を早期終了する。
     // ターン最小化問題では true、固定長問題では false が基本。
     pub minimize_turn: bool,
@@ -335,7 +346,7 @@ where
 
     pub fn solve(&mut self) -> Vec<Op> {
         let mut selector = Selector::new(self.cfg.max_width * 2);
-        for _t in 0..self.cfg.tern {
+        for _t in 0..self.cfg.turn {
             if _t != 0 {
                 let selected = selector.drain();
                 if self.cfg.minimize_turn && selected.iter().any(|c| c.is_end) {
@@ -366,8 +377,13 @@ where
     }
 
     fn enum_cands(&mut self, cands: &mut Selector) {
-        self.tree.walk_leaf(&mut self.state, |st, parent| {
-            st.append_cands(parent, cands);
+        let tree = &self.tree;
+        let mut ctx = BeamContext {
+            state: &mut self.state,
+            _marker: std::marker::PhantomData,
+        };
+        tree.walk_leaf(&mut ctx, |ctx, parent| {
+            ctx.state.append_cands(parent, cands);
         });
     }
 
@@ -404,207 +420,6 @@ where
         ret.reverse();
         ret
     }
-}
-
-pub mod doubly_chained_tree {
-
-pub type NodeId = u16;
-const INF: NodeId = !0;
-
-// 各ノードが保持する値（このプロジェクトでは beam の操作 Op）。
-pub trait NodeValue: std::fmt::Debug + Clone + Default {}
-
-#[derive(Debug, Clone, Default)]
-pub struct Node<T: NodeValue> {
-    pub id: NodeId,
-    // 親ノードID。root の親は INF。
-    pub parent: NodeId,
-    // 先頭の子ノードID。
-    child: NodeId,
-    // 親の子リスト内での兄弟リンク。
-    prev: NodeId,
-    next: NodeId,
-    // ノードが持つ値。
-    pub value: T,
-}
-
-impl<T: NodeValue> Node<T> {
-    pub fn is_root(&self) -> bool {
-        self.parent == INF
-    }
-    pub fn has_child(&self) -> bool {
-        self.child != INF
-    }
-}
-
-pub trait Context<T: NodeValue> {
-    // 木を下るときに値を適用する。
-    fn apply(&mut self, value: &T);
-    // 木を上るときに値を巻き戻す。
-    fn revert(&mut self, value: &T);
-}
-
-// ノード再利用を行う双方向連結木。
-//
-// - `nodes`: ノード本体の格納領域
-// - `free`: 再利用可能なノードID
-// - 親子・兄弟関係は parent/child/prev/next で管理
-pub struct DoublyChainedTree<T: NodeValue> {
-    pub nodes: Vec<Node<T>>,
-    pub free: Vec<NodeId>,
-}
-
-impl<T: NodeValue> DoublyChainedTree<T> {
-    pub fn new(max_nodes: usize, root: T) -> Self {
-        let mut nodes = vec![Node::default(); max_nodes];
-        nodes[0] = Node {
-            id: 0,
-            parent: INF,
-            child: INF,
-            prev: INF,
-            next: INF,
-            value: root,
-        };
-        let free = (1..nodes.len() as NodeId).rev().collect::<Vec<_>>();
-        Self { nodes, free }
-    }
-
-    pub fn reset(&mut self, root: Node<T>) {
-        self.nodes[0] = root;
-        self.free.clear();
-        self.free.extend((1..self.nodes.len() as NodeId).rev());
-    }
-
-    pub fn add_node(&mut self, parent: NodeId, value: T) -> NodeId {
-        // Nodeのイメージ
-        // (追加前)
-        // 1
-        // v
-        // 2 > 3
-        // (4を追加)
-        // 1
-        // v
-        // 4 > 2 > 3
-
-        // 新しいNodeを親の子の兄弟として追加する
-        let next = self.nodes[parent as usize].child;
-        let new = if let Some(n) = self.free.pop() {
-            self.nodes[n as usize] = Node {
-                id: n,
-                parent,
-                next,
-                child: INF,
-                prev: INF,
-                value,
-            };
-            n
-        } else {
-            let n = self.nodes.len() as NodeId;
-            assert!(n != 0, "Not enough size for NodeId");
-            self.nodes.push(Node {
-                id: n,
-                parent,
-                next,
-                child: INF,
-                prev: INF,
-                value,
-            });
-            n
-        };
-
-        // 兄弟が既にいる場合、その兄弟のprevに新しいNodeを追加
-        if next != INF {
-            self.nodes[next as usize].prev = new;
-        }
-
-        // 親の子として新しいNodeを追加
-        self.nodes[parent as usize].child = new;
-
-        new
-    }
-
-    pub fn remove_node(&mut self, mut idx: NodeId) {
-        // 葉側から上方向に不要ノードを連鎖削除する。
-        // 親が一人っ子連鎖になる場合は再帰的に親も消す。
-        loop {
-            self.free.push(idx);
-            let Node {
-                prev, next, parent, ..
-            } = self.nodes[idx as usize];
-            assert_ne!(parent, INF, "全てのノードを消そうとしています");
-
-            // 削除対象Nodeが一人っ子の場合、親Nodeを残す意味がないため削除する
-            if prev & next == INF {
-                idx = parent;
-                continue;
-            }
-
-            // 削除対象Nodeのnextを付け替え
-            if prev != INF {
-                self.nodes[prev as usize].next = next;
-            } else {
-                self.nodes[parent as usize].child = next;
-            }
-
-            // 削除対象Nodeのprevを付け替え
-            if next != INF {
-                self.nodes[next as usize].prev = prev;
-            }
-
-            break;
-        }
-    }
-
-    pub fn walk_leaf<C: Context<T>>(
-        &self,
-        ctx: &mut C,
-        mut walker: impl FnMut(&mut C, &Node<T>),
-    ) {
-        // 葉ノードを DFS で巡回しつつ、外部文脈を apply/revert で同期する。
-        //
-        // 保証:
-        // - 葉で `walker` を呼ぶ時点で `ctx` はその葉までの経路状態を反映している
-        // - 葉間移動時は差分巻き戻しで文脈を更新し、毎回の全再構築はしない
-        let mut cur_node = 0;
-        loop {
-            let Node { next, child, .. } = self.nodes[cur_node];
-            if next == INF || child == INF {
-                break;
-            }
-            cur_node = child as usize;
-            ctx.apply(&self.nodes[cur_node].value);
-        }
-
-        let root = cur_node;
-        loop {
-            let child = self.nodes[cur_node].child;
-            if child == INF {
-                walker(ctx, &self.nodes[cur_node]);
-
-                loop {
-                    if cur_node == root {
-                        return;
-                    }
-                    let node = &self.nodes[cur_node];
-                    ctx.revert(&node.value);
-                    // 兄弟に移動
-                    if node.next != INF {
-                        cur_node = node.next as usize;
-                        ctx.apply(&self.nodes[cur_node].value);
-                        break;
-                    }
-                    // 親に移動
-                    cur_node = node.parent as usize;
-                }
-            } else {
-                // 子に移動
-                cur_node = child as usize;
-                ctx.apply(&self.nodes[cur_node].value);
-            }
-        }
-    }
-}
-
 }
 
 #[cfg(test)]
